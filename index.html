@@ -4,12 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wish Upon Development Roadmap</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico">
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https:; script-src 'self' 'unsafe-inline' https:;">
+    <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzYwYTVmYSIgZD0iTTEyIDEuMWw0LjQgNy4xbDcuNiAxLjdsLTUuNSA1LjRsMS4zIDcuNmwtNi44LTMuNkw2LjIgMjIuOWwxLjMtNy42TDIgOS45bDcuNi0xLjdMMTIgMS4xeiIvPjwvc3ZnPg==">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self' https:; 
+        img-src 'self' data: https:; 
+        style-src 'self' 'unsafe-inline' https: cdnjs.cloudflare.com;
+        script-src 'self' 'unsafe-inline' https: cdnjs.cloudflare.com *.firebaseio.com;
+        connect-src 'self' https: wss://*.firebaseio.com;
+    ">
     <style>
         :root {
             --bg-color: #0a0d1c;
@@ -476,10 +479,99 @@
         measurementId: "G-B290VJGTRC"
     };
 
-    // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
-    const analytics = firebase.analytics();
-    const db = firebase.database();
+    // Add a global error handler for Firebase operations
+    function handleFirebaseError(error, operation) {
+        console.error(`Firebase ${operation} error:`, error);
+        
+        // User-friendly error messages
+        const errorMessages = {
+            'PERMISSION_DENIED': 'Access denied. Please check your connection.',
+            'NETWORK_ERROR': 'Network error. Please check your internet connection.',
+            'DISCONNECTED': 'Lost connection to the server. Trying to reconnect...',
+            'default': 'An error occurred. Please try again.'
+        };
+
+        const message = errorMessages[error.code] || errorMessages.default;
+        showNotification(message);
+    }
+
+    // Initialize Firebase with better error handling
+    try {
+        firebase.initializeApp(firebaseConfig);
+        const analytics = firebase.analytics();
+        const db = firebase.database();
+        
+        // Add connection state monitoring
+        const connectedRef = db.ref('.info/connected');
+        connectedRef.on('value', (snap) => {
+            if (snap.val() === true) {
+                showNotification('Connected to database');
+            } else {
+                showNotification('Disconnected from database');
+            }
+        });
+    } catch (error) {
+        handleFirebaseError(error, 'initialization');
+        // Fallback to local storage if Firebase fails
+        enableOfflineMode();
+    }
+
+    // Add offline mode support
+    function enableOfflineMode() {
+        // Implementation of local storage fallback
+        const localStorage = window.localStorage;
+        
+        // Override database functions with local storage versions
+        db = {
+            ref: (path) => ({
+                set: (data) => {
+                    try {
+                        localStorage.setItem(path, JSON.stringify(data));
+                        return Promise.resolve();
+                    } catch (e) {
+                        return Promise.reject(e);
+                    }
+                },
+                on: (event, callback) => {
+                    const data = localStorage.getItem(path);
+                    if (data) callback({ val: () => JSON.parse(data) });
+                }
+            })
+        };
+        
+        showNotification('Working in offline mode');
+    }
+
+    // Update saveState with retry logic
+    function saveState() {
+        const state = {
+            completedTasks: Array.from(document.querySelectorAll('.checkbox'))
+                .map(cb => cb.classList.contains('checked')),
+            assignedOwners: Array.from(document.querySelectorAll('.owner-tag'))
+                .map(tag => tag.textContent),
+            lastUpdated: new Date().toISOString()
+        };
+
+        const retryOperation = (operation, maxRetries = 3) => {
+            return new Promise((resolve, reject) => {
+                const attempt = (retryCount) => {
+                    operation()
+                        .then(resolve)
+                        .catch((error) => {
+                            if (retryCount < maxRetries) {
+                                setTimeout(() => attempt(retryCount + 1), 1000 * retryCount);
+                            } else {
+                                reject(error);
+                            }
+                        });
+                };
+                attempt(0);
+            });
+        };
+
+        retryOperation(() => db.ref('roadmapState').set(state))
+            .catch(error => handleFirebaseError(error, 'saving'));
+    }
 
     // Task Data Structure
     const taskSections = [
@@ -717,18 +809,6 @@
             }, ...currentWins];
             db.ref('wins').set(newWins);
         });
-    }
-
-    // Save current state
-    function saveState() {
-        const state = {
-            completedTasks: Array.from(document.querySelectorAll('.checkbox'))
-                .map(cb => cb.classList.contains('checked')),
-            assignedOwners: Array.from(document.querySelectorAll('.owner-tag'))
-                .map(tag => tag.textContent),
-            lastUpdated: new Date().toISOString()
-        };
-        db.ref('roadmapState').set(state);
     }
 
     // Load saved state
