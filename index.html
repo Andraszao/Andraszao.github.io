@@ -248,10 +248,6 @@
             background: rgba(255, 255, 255, 0.05);
         }
 
-        .task.hidden {
-            display: none;
-        }
-
         .task-info {
             display: flex;
             align-items: center;
@@ -291,66 +287,10 @@
             background: rgba(255, 255, 255, 0.15);
         }
 
-        .assignee-filters {
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-            margin-bottom: 2rem;
-            flex-wrap: wrap;
-        }
-
-        .assignee-filter-container {
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-        }
-
-        .assignee-tag {
-            padding: 0.5rem 1.5rem;
-            border-radius: 2rem;
-            font-size: 0.875rem;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            backdrop-filter: blur(8px);
-            cursor: pointer;
-            background: rgba(167, 139, 250, 0.1);
-            color: var(--accent-purple);
-            border: 1px solid rgba(167, 139, 250, 0.2);
-            transition: all 0.3s ease;
-        }
-
-        .assignee-tag:hover, .assignee-tag.active {
-            background: rgba(167, 139, 250, 0.2);
-            transform: translateY(-2px);
-        }
-
         @media (max-width: 768px) {
             h1 { font-size: 2.5rem; }
             .container { padding: 1rem; }
             .category-tag { padding: 0.4rem 1rem; }
-        }
-
-        .add-task {
-            background: rgba(96, 165, 250, 0.2);
-            color: var(--accent-blue);
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            cursor: pointer;
-            font-size: 0.875rem;
-            transition: all 0.2s ease;
-            margin-top: 1rem;
-            width: 100%;
-        }
-
-        .add-task:hover {
-            background: rgba(96, 165, 250, 0.3);
-        }
-
-        .tasks-container {
-            min-height: 10px;
         }
     </style>
 </head>
@@ -390,19 +330,13 @@
             </div>
         </div>
 
-        <div class="assignee-filters">
-            <div class="category-tag all active" onclick="filterTasks('all')">
-                <i class="fas fa-users"></i>
-                All Tasks
-            </div>
-            <div id="assigneeFilters" class="assignee-filter-container"></div>
-        </div>
-
         <main id="taskSections"></main>
     </div>
 
-    <!-- Firebase Scripts -->
+    <!-- Firebase Configuration -->
     <script src="js/firebase-config.js"></script>
+
+    <!-- Firebase Scripts -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics-compat.js"></script>
@@ -420,77 +354,135 @@
             title: 'Movement & Orbital Systems',
             category: 'MVP',
             icon: 'fa-rocket',
-            tasks: []
+            tasks: ['Player Movement', 'Planetary Orbit', 'Entering Orbit', 'Stay in Orbit', 'Leave Orbit']
         },
         {
             id: 'level-systems',
             title: 'Level Systems',
             category: 'MVP',
             icon: 'fa-layer-group',
-            tasks: []
+            tasks: [
+                'Level Completion',
+                'Black Hole Art',
+                'Level End Screen',
+                'Autosave',
+                'Level Transition',
+                'Level Transition Animation',
+                'Load Screen',
+                'Remove previous scene and load next'
+            ]
         },
         {
             id: 'obstacles',
             title: 'Obstacles & Boundaries',
             category: 'MVP',
             icon: 'fa-triangle-exclamation',
-            tasks: []
+            tasks: [
+                'Obstacle (Asteroid)',
+                'Asteroid Art',
+                'Collision and Physics',
+                'Movement',
+                'Breaking Animation',
+                'Spawning of smaller asteroids',
+                'Level Boundaries/Boundary System',
+                'Collision',
+                'Player Respawn/Level Restart'
+            ]
         },
         {
             id: 'basic-levels',
             title: 'Basic Levels',
             category: 'MVP',
             icon: 'fa-cubes',
-            tasks: []
+            tasks: [
+                'Level design for 1-2 levels',
+                'Implementation of 1-2 levels'
+            ]
         },
         {
             id: 'save-system',
             title: 'Save System',
             category: 'Basic Game',
             icon: 'fa-floppy-disk',
-            tasks: []
+            tasks: [
+                'Save Manager',
+                'Determine save aspects',
+                'Set up save/load system'
+            ]
         },
         {
             id: 'menu-systems',
             title: 'Menu Systems',
             category: 'Basic Game',
             icon: 'fa-bars',
-            tasks: []
+            tasks: [
+                'Main Menu',
+                'Menu Design',
+                'New Game Start',
+                'Save/Load Integration',
+                'Settings Integration'
+            ]
         },
         {
             id: 'settings',
             title: 'Settings',
             category: 'Basic Game',
             icon: 'fa-sliders',
-            tasks: []
+            tasks: [
+                'Video Settings',
+                'Audio Settings',
+                'Gameplay Settings'
+            ]
         },
         {
             id: 'full-levels',
             title: 'Full Level Implementation',
             category: 'Basic Game',
             icon: 'fa-cube',
-            tasks: []
+            tasks: [
+                'Design Segment Themes',
+                'Level Design (18 levels)',
+                'Implementation'
+            ]
         },
         {
             id: 'hidden-levels',
             title: 'Hidden Levels',
             category: 'Nice to Have',
             icon: 'fa-gem',
-            tasks: []
+            tasks: [
+                'Level Design (6 secret levels)',
+                'Secret Access System',
+                'Implementation'
+            ]
         },
         {
             id: 'level-editor',
             title: 'Level Editor',
             category: 'Stretch Goals',
             icon: 'fa-pencil',
-            tasks: []
+            tasks: [
+                'Basic Editor',
+                'Export System',
+                'Menu Integration',
+                'Level Sharing'
+            ]
         },
         {
             id: 'art-assets',
             title: 'Art Assets',
             category: 'MVP',
             icon: 'fa-palette',
-            tasks: []
+            tasks: [
+                'StarBoi Sprite',
+                'StarBoi Animations',
+                'Unique Planets (60)',
+                'Black Hole',
+                'Asteroids (5 variations)',
+                'Nebula Effects',
+                'Space Objects (10 variations)',
+                'Level Borders'
+            ]
         }
     ];
 
@@ -527,22 +519,17 @@
                     <i class="fas fa-chevron-down"></i>
                 </div>
                 <div class="section-content">
-                    <div class="tasks-container">
-                        ${section.tasks.map(task => `
-                            <div class="task">
-                                <div class="task-info">
-                                    <div class="checkbox" onclick="toggleCheck(this)">
-                                        <i class="fas fa-check"></i>
-                                    </div>
-                                    <span>${task}</span>
+                    ${section.tasks.map(task => `
+                        <div class="task">
+                            <div class="task-info">
+                                <div class="checkbox" onclick="toggleCheck(this)">
+                                    <i class="fas fa-check"></i>
                                 </div>
-                                <div class="owner-tag" onclick="assignTask(this)">Assign</div>
+                                <span>${task}</span>
                             </div>
-                        `).join('')}
-                    </div>
-                    <button class="add-task" onclick="addTask('${section.id}')">
-                        <i class="fas fa-plus"></i> New Task
-                    </button>
+                            <div class="owner-tag" onclick="assignTask(this)">Assign</div>
+                        </div>
+                    `).join('')}
                 </div>
             `;
             container.appendChild(sectionEl);
@@ -573,55 +560,7 @@
         if (name === null) return;
         tag.textContent = name || 'Assign';
         saveState();
-        updateAssigneeTags();
         showNotification(`Task assigned to ${name}`);
-    }
-
-    // Update assignee tags
-    function updateAssigneeTags() {
-        const assigneeFilters = document.getElementById('assigneeFilters');
-        const ownerTags = Array.from(document.querySelectorAll('.owner-tag'));
-        const assignees = new Set();
-        
-        ownerTags.forEach(tag => {
-            const name = tag.textContent;
-            if (name !== 'Assign') {
-                assignees.add(name);
-            }
-        });
-        
-        assigneeFilters.innerHTML = '';
-        
-        assignees.forEach(assignee => {
-            const filterTag = document.createElement('div');
-            filterTag.className = 'assignee-tag';
-            filterTag.onclick = () => filterTasks(assignee);
-            filterTag.innerHTML = `
-                <i class="fas fa-user"></i>
-                ${assignee}
-            `;
-            assigneeFilters.appendChild(filterTag);
-        });
-    }
-
-    // Filter tasks by assignee
-    function filterTasks(assignee) {
-        document.querySelectorAll('.assignee-tag, .category-tag.all').forEach(tag => {
-            tag.classList.remove('active');
-            if ((assignee === 'all' && tag.classList.contains('all')) ||
-                (tag.textContent.trim() === assignee)) {
-                tag.classList.add('active');
-            }
-        });
-        
-        document.querySelectorAll('.task').forEach(task => {
-            const ownerTag = task.querySelector('.owner-tag');
-            if (assignee === 'all' || ownerTag.textContent === assignee) {
-                task.classList.remove('hidden');
-            } else {
-                task.classList.add('hidden');
-            }
-        });
     }
 
     // Add a new win
@@ -667,6 +606,7 @@
                     const shouldBeChecked = state.completedTasks[i];
                     
                     if (wasChecked !== shouldBeChecked) {
+                        // Visual feedback for change
                         const taskElement = cb.closest('.task');
                         taskElement.classList.add('task-updated');
                         setTimeout(() => taskElement.classList.remove('task-updated'), 1000);
@@ -680,25 +620,24 @@
                     const newOwner = state.assignedOwners[i];
                     
                     if (currentOwner !== newOwner && newOwner !== 'Assign') {
+                        // Visual feedback for assignment
                         const taskElement = tag.closest('.task');
                         taskElement.classList.add('task-updated');
                         setTimeout(() => taskElement.classList.remove('task-updated'), 1000);
+                        tag.textContent = newOwner;
                     }
-                    tag.textContent = newOwner || 'Assign';
                 });
-                
-                updateAssigneeTags();
             }
         });
     }
 
-    // Load wins
     function loadWins() {
         db.ref('wins').on('value', (snapshot) => {
             const wins = snapshot.val() || [];
             const winsList = document.getElementById('winsList');
             const currentWinCount = winsList.children.length;
             
+            // Only animate if this is a new win being added
             const shouldAnimate = wins.length > currentWinCount;
             
             winsList.innerHTML = '';
@@ -717,16 +656,17 @@
         });
     }
 
-    // Initialize presence
     function initializePresence() {
         const presenceRef = db.ref('presence');
         const userId = 'user_' + Math.random().toString(36).substr(2, 9);
         
+        // When this user connects
         presenceRef.child(userId).onDisconnect().remove();
         presenceRef.child(userId).set({
             timestamp: firebase.database.ServerValue.TIMESTAMP
         });
 
+        // Show who's online
         presenceRef.on('value', (snapshot) => {
             const viewers = snapshot.numChildren();
             document.querySelector('.subtitle').textContent = 
@@ -734,7 +674,7 @@
         });
     }
 
-    // Show notification
+    // Add the new notification function
     function showNotification(message) {
         const notification = document.createElement('div');
         notification.style.cssText = `
@@ -754,83 +694,24 @@
         notification.textContent = message;
         document.body.appendChild(notification);
         
+        // Animate in
         requestAnimationFrame(() => {
             notification.style.transform = 'translateY(0)';
         });
         
+        // Remove after 3 seconds
         setTimeout(() => {
             notification.style.transform = 'translateY(100px)';
             setTimeout(() => notification.remove(), 300);
         }, 3000);
     }
 
-    // Add this new function to handle adding tasks
-    function addTask(sectionId) {
-        const taskName = prompt('Enter task name:');
-        if (!taskName) return;
-
-        // Find the section in our data structure
-        const section = taskSections.find(s => s.id === sectionId);
-        if (!section) return;
-
-        // Add the task to our data structure
-        section.tasks.push(taskName);
-
-        // Save tasks to Firebase
-        const updates = {};
-        updates[`tasks/${sectionId}`] = section.tasks;
-        db.ref().update(updates);
-
-        // Create and add the new task element
-        const taskEl = document.createElement('div');
-        taskEl.className = 'task';
-        taskEl.innerHTML = `
-            <div class="task-info">
-                <div class="checkbox" onclick="toggleCheck(this)">
-                    <i class="fas fa-check"></i>
-                </div>
-                <span>${taskName}</span>
-            </div>
-            <div class="owner-tag" onclick="assignTask(this)">Assign</div>
-        `;
-        
-        // Add the new task to the DOM
-        const tasksContainer = document.querySelector(`#${sectionId} .tasks-container`);
-        tasksContainer.appendChild(taskEl);
-
-        // Save the updated state
-        saveState();
-        showNotification("Task added");
-    }
-
-    // Add the new loadTasks function
-    function loadTasks() {
-        db.ref('tasks').once('value').then((snapshot) => {
-            const tasks = snapshot.val();
-            if (tasks) {
-                // Update our taskSections with stored tasks
-                Object.keys(tasks).forEach(sectionId => {
-                    const section = taskSections.find(s => s.id === sectionId);
-                    if (section) {
-                        section.tasks = tasks[sectionId] || [];
-                    }
-                });
-                // Regenerate the sections with loaded tasks
-                document.getElementById('taskSections').innerHTML = '';
-                generateTaskSections();
-                // Reapply any saved state (checkmarks and assignments)
-                loadState();
-            }
-        });
-    }
-
     // Initialize everything
     createStars();
     generateTaskSections();
-    loadTasks();
     loadWins();
     loadState();
-    initializePresence();
+    initializePresence();  // Added presence feature
     </script>
 </body>
 </html>
