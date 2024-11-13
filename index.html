@@ -331,6 +331,27 @@
             .container { padding: 1rem; }
             .category-tag { padding: 0.4rem 1rem; }
         }
+
+        .add-task {
+            background: rgba(96, 165, 250, 0.2);
+            color: var(--accent-blue);
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+            margin-top: 1rem;
+            width: 100%;
+        }
+
+        .add-task:hover {
+            background: rgba(96, 165, 250, 0.3);
+        }
+
+        .tasks-container {
+            min-height: 10px;
+        }
     </style>
 </head>
 <body>
@@ -399,134 +420,77 @@
             title: 'Movement & Orbital Systems',
             category: 'MVP',
             icon: 'fa-rocket',
-            tasks: ['Player Movement', 'Planetary Orbit', 'Entering Orbit', 'Stay in Orbit', 'Leave Orbit']
+            tasks: []
         },
         {
             id: 'level-systems',
             title: 'Level Systems',
             category: 'MVP',
             icon: 'fa-layer-group',
-            tasks: [
-                'Level Completion',
-                'Black Hole Art',
-                'Level End Screen',
-                'Autosave',
-                'Level Transition',
-                'Level Transition Animation',
-                'Load Screen',
-                'Remove previous scene and load next'
-            ]
+            tasks: []
         },
         {
             id: 'obstacles',
             title: 'Obstacles & Boundaries',
             category: 'MVP',
             icon: 'fa-triangle-exclamation',
-            tasks: [
-                'Obstacle (Asteroid)',
-                'Asteroid Art',
-                'Collision and Physics',
-                'Movement',
-                'Breaking Animation',
-                'Spawning of smaller asteroids',
-                'Level Boundaries/Boundary System',
-                'Collision',
-                'Player Respawn/Level Restart'
-            ]
+            tasks: []
         },
         {
             id: 'basic-levels',
             title: 'Basic Levels',
             category: 'MVP',
             icon: 'fa-cubes',
-            tasks: [
-                'Level design for 1-2 levels',
-                'Implementation of 1-2 levels'
-            ]
+            tasks: []
         },
         {
             id: 'save-system',
             title: 'Save System',
             category: 'Basic Game',
             icon: 'fa-floppy-disk',
-            tasks: [
-                'Save Manager',
-                'Determine save aspects',
-                'Set up save/load system'
-            ]
+            tasks: []
         },
         {
             id: 'menu-systems',
             title: 'Menu Systems',
             category: 'Basic Game',
             icon: 'fa-bars',
-            tasks: [
-                'Main Menu',
-                'Menu Design',
-                'New Game Start',
-                'Save/Load Integration',
-                'Settings Integration'
-            ]
+            tasks: []
         },
         {
             id: 'settings',
             title: 'Settings',
             category: 'Basic Game',
             icon: 'fa-sliders',
-            tasks: ['Video Settings',
-                'Audio Settings',
-                'Gameplay Settings'
-            ]
+            tasks: []
         },
         {
             id: 'full-levels',
             title: 'Full Level Implementation',
             category: 'Basic Game',
             icon: 'fa-cube',
-            tasks: [
-                'Design Segment Themes',
-                'Level Design (18 levels)',
-                'Implementation'
-            ]
+            tasks: []
         },
         {
             id: 'hidden-levels',
             title: 'Hidden Levels',
             category: 'Nice to Have',
             icon: 'fa-gem',
-            tasks: [
-                'Level Design (6 secret levels)',
-                'Secret Access System',
-                'Implementation'
-            ]
+            tasks: []
         },
         {
             id: 'level-editor',
             title: 'Level Editor',
             category: 'Stretch Goals',
             icon: 'fa-pencil',
-            tasks: [
-                'Basic Editor',
-                'Export System',
-                'Menu Integration',
-                'Level Sharing'
-            ]
+            tasks: []
         },
         {
             id: 'art-assets',
             title: 'Art Assets',
             category: 'MVP',
             icon: 'fa-palette',
-            tasks: [
-                'StarBoi Sprite',
-                'StarBoi Animations',
-                'Unique Planets (60)',
-                'Black Hole',
-                'Asteroids (5 variations)',
-                'Nebula Effects',
-                'Space Objects (10 variations)',
-                'Level Borders'
-            ]
+            tasks: []
         }
     ];
 
@@ -563,17 +527,22 @@
                     <i class="fas fa-chevron-down"></i>
                 </div>
                 <div class="section-content">
-                    ${section.tasks.map(task => `
-                        <div class="task">
-                            <div class="task-info">
-                                <div class="checkbox" onclick="toggleCheck(this)">
-                                    <i class="fas fa-check"></i>
+                    <div class="tasks-container">
+                        ${section.tasks.map(task => `
+                            <div class="task">
+                                <div class="task-info">
+                                    <div class="checkbox" onclick="toggleCheck(this)">
+                                        <i class="fas fa-check"></i>
+                                    </div>
+                                    <span>${task}</span>
                                 </div>
-                                <span>${task}</span>
+                                <div class="owner-tag" onclick="assignTask(this)">Assign</div>
                             </div>
-                            <div class="owner-tag" onclick="assignTask(this)">Assign</div>
-                        </div>
-                    `).join('')}
+                        `).join('')}
+                    </div>
+                    <button class="add-task" onclick="addTask('${section.id}')">
+                        <i class="fas fa-plus"></i> New Task
+                    </button>
                 </div>
             `;
             container.appendChild(sectionEl);
@@ -795,9 +764,70 @@
         }, 3000);
     }
 
+    // Add this new function to handle adding tasks
+    function addTask(sectionId) {
+        const taskName = prompt('Enter task name:');
+        if (!taskName) return;
+
+        // Find the section in our data structure
+        const section = taskSections.find(s => s.id === sectionId);
+        if (!section) return;
+
+        // Add the task to our data structure
+        section.tasks.push(taskName);
+
+        // Save tasks to Firebase
+        const updates = {};
+        updates[`tasks/${sectionId}`] = section.tasks;
+        db.ref().update(updates);
+
+        // Create and add the new task element
+        const taskEl = document.createElement('div');
+        taskEl.className = 'task';
+        taskEl.innerHTML = `
+            <div class="task-info">
+                <div class="checkbox" onclick="toggleCheck(this)">
+                    <i class="fas fa-check"></i>
+                </div>
+                <span>${taskName}</span>
+            </div>
+            <div class="owner-tag" onclick="assignTask(this)">Assign</div>
+        `;
+        
+        // Add the new task to the DOM
+        const tasksContainer = document.querySelector(`#${sectionId} .tasks-container`);
+        tasksContainer.appendChild(taskEl);
+
+        // Save the updated state
+        saveState();
+        showNotification("Task added");
+    }
+
+    // Add the new loadTasks function
+    function loadTasks() {
+        db.ref('tasks').once('value').then((snapshot) => {
+            const tasks = snapshot.val();
+            if (tasks) {
+                // Update our taskSections with stored tasks
+                Object.keys(tasks).forEach(sectionId => {
+                    const section = taskSections.find(s => s.id === sectionId);
+                    if (section) {
+                        section.tasks = tasks[sectionId] || [];
+                    }
+                });
+                // Regenerate the sections with loaded tasks
+                document.getElementById('taskSections').innerHTML = '';
+                generateTaskSections();
+                // Reapply any saved state (checkmarks and assignments)
+                loadState();
+            }
+        });
+    }
+
     // Initialize everything
     createStars();
     generateTaskSections();
+    loadTasks();
     loadWins();
     loadState();
     initializePresence();
