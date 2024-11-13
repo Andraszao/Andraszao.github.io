@@ -292,6 +292,62 @@
             .container { padding: 1rem; }
             .category-tag { padding: 0.4rem 1rem; }
         }
+
+        .assignee-filters {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: rgba(96, 165, 250, 0.1);
+            border: 1px solid rgba(96, 165, 250, 0.2);
+            border-radius: 1rem;
+            backdrop-filter: blur(8px);
+        }
+
+        .filters-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--accent-blue);
+            margin-bottom: 1rem;
+        }
+
+        .assignee-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .assignee-tag {
+            padding: 0.5rem 1rem;
+            background: rgba(96, 165, 250, 0.2);
+            border: 1px solid rgba(96, 165, 250, 0.3);
+            border-radius: 1rem;
+            color: var(--accent-blue);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .assignee-tag:hover {
+            background: rgba(96, 165, 250, 0.3);
+        }
+
+        .assignee-tag.active {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        .assignee-count {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 0.1rem 0.5rem;
+            border-radius: 1rem;
+            font-size: 0.8rem;
+        }
+
+        .task.filtered {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -330,21 +386,24 @@
             </div>
         </div>
 
+        <div class="assignee-filters">
+            <div class="filters-header">
+                <i class="fas fa-users"></i>
+                <span>Assigned To:</span>
+            </div>
+            <div id="assigneeList" class="assignee-tags"></div>
+        </div>
+
         <main id="taskSections"></main>
     </div>
 
     <!-- Firebase Scripts -->
-    <script src="js/firebase-config.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
 
     <script>
-    // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
-    const analytics = firebase.analytics();
-    const db = firebase.database();
-
     // Task Data Structure
     const taskSections = [
         {
@@ -558,6 +617,7 @@
         if (name === null) return;
         tag.textContent = name || 'Assign';
         saveState();
+        updateAssigneeFilters();
         showNotification(`Task assigned to ${name}`);
     }
 
@@ -625,6 +685,8 @@
                         tag.textContent = newOwner;
                     }
                 });
+
+                updateAssigneeFilters();
             }
         });
     }
@@ -704,12 +766,76 @@
         }, 3000);
     }
 
+    function updateAssigneeFilters() {
+        const assigneeList = document.getElementById('assigneeList');
+        const assignees = new Map(); // Use Map to track assignee counts
+        
+        // Collect all assignees and their task counts
+        document.querySelectorAll('.owner-tag').forEach(tag => {
+            const name = tag.textContent;
+            if (name !== 'Assign') {
+                assignees.set(name, (assignees.get(name) || 0) + 1);
+            }
+        });
+
+        // Clear and rebuild assignee filter tags
+        assigneeList.innerHTML = '';
+        if (assignees.size > 0) {
+            // Add "All" filter
+            const allTag = document.createElement('div');
+            allTag.className = 'assignee-tag active';
+            allTag.innerHTML = `
+                <i class="fas fa-users"></i>
+                <span>All</span>
+            `;
+            allTag.onclick = () => filterByAssignee(null);
+            assigneeList.appendChild(allTag);
+
+            // Add individual assignee filters
+            assignees.forEach((count, name) => {
+                const tag = document.createElement('div');
+                tag.className = 'assignee-tag';
+                tag.innerHTML = `
+                    <i class="fas fa-user"></i>
+                    <span>${name}</span>
+                    <span class="assignee-count">${count}</span>
+                `;
+                tag.onclick = () => filterByAssignee(name);
+                assigneeList.appendChild(tag);
+            });
+        }
+    }
+
+    function filterByAssignee(assignee) {
+        // Update active state of filter tags
+        document.querySelectorAll('.assignee-tag').forEach(tag => {
+            const isAll = !assignee && tag.textContent.includes('All');
+            const matches = assignee && tag.textContent.includes(assignee);
+            tag.classList.toggle('active', isAll || matches);
+        });
+
+        // Filter tasks
+        document.querySelectorAll('.task').forEach(task => {
+            const taskAssignee = task.querySelector('.owner-tag').textContent;
+            const shouldShow = !assignee || taskAssignee === assignee;
+            task.classList.toggle('filtered', !shouldShow);
+        });
+
+        // Show/hide empty sections
+        document.querySelectorAll('.section').forEach(section => {
+            const hasVisibleTasks = Array.from(section.querySelectorAll('.task'))
+                .some(task => !task.classList.contains('filtered'));
+            section.style.display = hasVisibleTasks ? '' : 'none';
+        });
+    }
+
     // Initialize everything
     createStars();
     generateTaskSections();
     loadWins();
     loadState();
-    initializePresence();  // Added presence feature
+    initializePresence();
+    updateAssigneeFilters();
     </script>
 </body>
 </html>
