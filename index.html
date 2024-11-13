@@ -596,18 +596,61 @@
         let isEditMode = false;
         let hasUnsavedChanges = false;
         let draggedElement = null;
+        let db = null;
+        let sectionsRef = null;
+        let winsRef = null;
+        let presenceRef = null;
 
         // Initialize everything when the page loads
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
             createStars();
             
-            // Only initialize Firebase if we're on GitHub Pages
-            if (window.location.hostname.includes('github.io')) {
-                initializeFirebase();
-            } else {
-                console.log('Running in local development mode');
+            // Try to initialize Firebase
+            try {
+                if (typeof firebaseConfig !== 'undefined') {
+                    const app = firebase.initializeApp(firebaseConfig);
+                    db = firebase.database();
+                    sectionsRef = db.ref('taskSections');
+                    winsRef = db.ref('wins');
+                    presenceRef = db.ref('presence');
+                    await initializeFirebase();
+                    console.log('Firebase initialized successfully');
+                } else {
+                    console.log('Running in local development mode - Firebase disabled');
+                    // Use localStorage as fallback
+                    initializeLocalStorage();
+                }
+            } catch (error) {
+                console.error('Firebase initialization failed:', error);
+                // Use localStorage as fallback
+                initializeLocalStorage();
             }
+            
+            initializeContent();
         });
+
+        function initializeLocalStorage() {
+            // Create mock Firebase-like functions for local development
+            db = {
+                ref: () => ({
+                    on: () => {},
+                    push: (data) => {
+                        const localData = JSON.parse(localStorage.getItem('localWins') || '[]');
+                        localData.push({
+                            ...data,
+                            timestamp: Date.now()
+                        });
+                        localStorage.setItem('localWins', JSON.stringify(localData));
+                        return Promise.resolve();
+                    }
+                })
+            };
+            
+            // Set up mock refs
+            sectionsRef = db.ref('taskSections');
+            winsRef = db.ref('wins');
+            presenceRef = db.ref('presence');
+        }
     </script>
 </head>
 <body>
@@ -755,10 +798,6 @@
             showNotification('Failed to save changes', 'error');
         }
     }
-
-    let isEditMode = false;
-    let hasUnsavedChanges = false;
-    let draggedElement = null;
 
     function toggleEditMode() {
         if (isEditMode && hasUnsavedChanges) {
@@ -1086,18 +1125,26 @@
         const newWin = {
             text: win,
             date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-            timestamp: firebase.database.ServerValue.TIMESTAMP
+            timestamp: db ? firebase.database.ServerValue.TIMESTAMP : Date.now()
         };
 
-        // Push the new win to Firebase
-        winsRef.push(newWin)
-            .then(() => {
-                showNotification('Inch added successfully!');
-            })
-            .catch(error => {
-                console.error('Failed to add inch:', error);
-                showNotification('Failed to add inch', 'error');
-            });
+        // Push the new win to storage
+        if (winsRef) {
+            winsRef.push(newWin)
+                .then(() => {
+                    showNotification('Inch added successfully!');
+                })
+                .catch(error => {
+                    console.error('Failed to add inch:', error);
+                    showNotification('Failed to add inch', 'error');
+                });
+        } else {
+            // Fallback to localStorage
+            const localWins = JSON.parse(localStorage.getItem('localWins') || '[]');
+            localWins.push(newWin);
+            localStorage.setItem('localWins', JSON.stringify(localWins));
+            showNotification('Inch added successfully! (Local Storage)');
+        }
     }
 
     // Save current state
@@ -1283,12 +1330,6 @@
         loadState();
         updateAssigneeFilters();
     }
-
-    // Initialize everything
-    document.addEventListener('DOMContentLoaded', function() {
-        createStars();
-        initializeContent();
-    });
     </script>
 </body>
 </html>
