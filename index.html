@@ -4,15 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wish Upon Development Roadmap</title>
-    <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzYwYTVmYSIgZD0iTTEyIDEuMWw0LjQgNy4xbDcuNiAxLjdsLTUuNSA1LjRsMS4zIDcuNmwtNi44LTMuNkw2LjIgMjIuOWwxLjMtNy42TDIgOS45bDcuNi0xLjdMMTIgMS4xeiIvPjwvc3ZnPg==">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <meta http-equiv="Content-Security-Policy" content="
-        default-src 'self' https:; 
-        img-src 'self' data: https:; 
-        style-src 'self' 'unsafe-inline' https: cdnjs.cloudflare.com;
-        script-src 'self' 'unsafe-inline' https: cdnjs.cloudflare.com *.firebaseio.com;
-        connect-src 'self' https: wss://*.firebaseio.com;
-    ">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         :root {
             --bg-color: #0a0d1c;
@@ -154,18 +146,6 @@
             background: rgba(252, 211, 77, 0.1);
             color: var(--accent-gold);
             border: 1px solid rgba(252, 211, 77, 0.2);
-        }
-
-        .category-tag.owner {
-            background: rgba(167, 139, 250, 0.1);
-            color: var(--accent-purple);
-            border: 1px solid rgba(167, 139, 250, 0.2);
-            cursor: pointer;
-        }
-
-        .category-tag.owner.active {
-            background: rgba(167, 139, 250, 0.3);
-            border-color: var(--accent-purple);
         }
 
         .wins-section {
@@ -312,93 +292,6 @@
             .container { padding: 1rem; }
             .category-tag { padding: 0.4rem 1rem; }
         }
-
-        .edit-controls {
-            display: flex;
-            justify-content: flex-end;
-            gap: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .edit-controls button {
-            background: rgba(96, 165, 250, 0.2);
-            color: var(--accent-blue);
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            cursor: pointer;
-            font-size: 0.875rem;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .edit-controls button:hover {
-            background: rgba(96, 165, 250, 0.3);
-        }
-
-        .edit-mode .task span {
-            border: 1px dashed transparent;
-            padding: 0.25rem 0.5rem;
-            border-radius: 0.25rem;
-        }
-
-        .edit-mode .task span:hover {
-            border-color: var(--accent-blue);
-            cursor: text;
-        }
-
-        .edit-mode .section-header {
-            cursor: grab;
-        }
-
-        .edit-mode .task {
-            cursor: grab;
-        }
-
-        .task.dragging {
-            opacity: 0.5;
-        }
-
-        .edit-actions {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .share-controls {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .share-controls button {
-            background: rgba(96, 165, 250, 0.2);
-            color: var(--accent-blue);
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            cursor: pointer;
-            font-size: 0.875rem;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .github-btn {
-            background: rgba(36, 41, 46, 0.2) !important;
-            color: #fff !important;
-        }
-
-        .donate-btn {
-            background: rgba(252, 211, 77, 0.2) !important;
-            color: var(--accent-gold) !important;
-        }
-
-        .share-controls button:hover {
-            transform: translateY(-2px);
-        }
     </style>
 </head>
 <body>
@@ -408,34 +301,6 @@
             <h1>Wish Upon</h1>
             <p class="subtitle">Development Constellation Map</p>
         </header>
-
-        <div class="edit-controls">
-            <button class="edit-toggle" onclick="toggleEditMode()">
-                <i class="fas fa-edit"></i>
-                Edit Mode
-            </button>
-            <div class="edit-actions" style="display: none;">
-                <button onclick="exportConfig()">
-                    <i class="fas fa-download"></i>
-                    Export
-                </button>
-                <button onclick="importConfig()">
-                    <i class="fas fa-upload"></i>
-                    Import
-                </button>
-            </div>
-        </div>
-
-        <div class="share-controls">
-            <button onclick="window.open('https://github.com/new')" class="github-btn">
-                <i class="fab fa-github"></i>
-                Fork on GitHub
-            </button>
-            <button onclick="window.open('https://ko-fi.com/inchwormgames')" class="donate-btn">
-                <i class="fas fa-heart"></i>
-                Support Project
-            </button>
-        </div>
 
         <div class="wins-section">
             <div class="wins-header">
@@ -455,7 +320,14 @@
                 <i class="fas fa-rocket"></i>
                 MVP
             </div>
-            <div id="assignmentTags" class="assignment-tags"></div>
+            <div class="category-tag basic">
+                <i class="fas fa-puzzle-piece"></i>
+                Basic Game
+            </div>
+            <div class="category-tag extra">
+                <i class="fas fa-star"></i>
+                Extra Features
+            </div>
         </div>
 
         <main id="taskSections"></main>
@@ -479,99 +351,10 @@
         measurementId: "G-B290VJGTRC"
     };
 
-    // Add a global error handler for Firebase operations
-    function handleFirebaseError(error, operation) {
-        console.error(`Firebase ${operation} error:`, error);
-        
-        // User-friendly error messages
-        const errorMessages = {
-            'PERMISSION_DENIED': 'Access denied. Please check your connection.',
-            'NETWORK_ERROR': 'Network error. Please check your internet connection.',
-            'DISCONNECTED': 'Lost connection to the server. Trying to reconnect...',
-            'default': 'An error occurred. Please try again.'
-        };
-
-        const message = errorMessages[error.code] || errorMessages.default;
-        showNotification(message);
-    }
-
-    // Initialize Firebase with better error handling
-    try {
-        firebase.initializeApp(firebaseConfig);
-        const analytics = firebase.analytics();
-        const db = firebase.database();
-        
-        // Add connection state monitoring
-        const connectedRef = db.ref('.info/connected');
-        connectedRef.on('value', (snap) => {
-            if (snap.val() === true) {
-                showNotification('Connected to database');
-            } else {
-                showNotification('Disconnected from database');
-            }
-        });
-    } catch (error) {
-        handleFirebaseError(error, 'initialization');
-        // Fallback to local storage if Firebase fails
-        enableOfflineMode();
-    }
-
-    // Add offline mode support
-    function enableOfflineMode() {
-        // Implementation of local storage fallback
-        const localStorage = window.localStorage;
-        
-        // Override database functions with local storage versions
-        db = {
-            ref: (path) => ({
-                set: (data) => {
-                    try {
-                        localStorage.setItem(path, JSON.stringify(data));
-                        return Promise.resolve();
-                    } catch (e) {
-                        return Promise.reject(e);
-                    }
-                },
-                on: (event, callback) => {
-                    const data = localStorage.getItem(path);
-                    if (data) callback({ val: () => JSON.parse(data) });
-                }
-            })
-        };
-        
-        showNotification('Working in offline mode');
-    }
-
-    // Update saveState with retry logic
-    function saveState() {
-        const state = {
-            completedTasks: Array.from(document.querySelectorAll('.checkbox'))
-                .map(cb => cb.classList.contains('checked')),
-            assignedOwners: Array.from(document.querySelectorAll('.owner-tag'))
-                .map(tag => tag.textContent),
-            lastUpdated: new Date().toISOString()
-        };
-
-        const retryOperation = (operation, maxRetries = 3) => {
-            return new Promise((resolve, reject) => {
-                const attempt = (retryCount) => {
-                    operation()
-                        .then(resolve)
-                        .catch((error) => {
-                            if (retryCount < maxRetries) {
-                                setTimeout(() => attempt(retryCount + 1), 1000 * retryCount);
-                            } else {
-                                reject(error);
-                            }
-                        });
-                };
-                attempt(0);
-            });
-        };
-
-        retryOperation(() => db.ref('roadmapState').set(state))
-            .catch(error => handleFirebaseError(error, 'saving'));
-    }
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const analytics = firebase.analytics();
+    const db = firebase.database();
 
     // Task Data Structure
     const taskSections = [
@@ -786,7 +569,6 @@
         if (name === null) return;
         tag.textContent = name || 'Assign';
         saveState();
-        updateAssignmentTags();
         showNotification(`Task assigned to ${name}`);
     }
 
@@ -809,6 +591,18 @@
             }, ...currentWins];
             db.ref('wins').set(newWins);
         });
+    }
+
+    // Save current state
+    function saveState() {
+        const state = {
+            completedTasks: Array.from(document.querySelectorAll('.checkbox'))
+                .map(cb => cb.classList.contains('checked')),
+            assignedOwners: Array.from(document.querySelectorAll('.owner-tag'))
+                .map(tag => tag.textContent),
+            lastUpdated: new Date().toISOString()
+        };
+        db.ref('roadmapState').set(state);
     }
 
     // Load saved state
@@ -927,183 +721,6 @@
     loadWins();
     loadState();
     initializePresence();  // Added presence feature
-
-    function updateAssignmentTags() {
-        const assignedOwners = new Set(
-            Array.from(document.querySelectorAll('.owner-tag'))
-                .map(tag => tag.textContent)
-                .filter(text => text !== 'Assign')
-        );
-        
-        const tagsContainer = document.getElementById('assignmentTags');
-        tagsContainer.innerHTML = '';
-        
-        // Add "All" tag
-        const allTag = document.createElement('div');
-        allTag.className = 'category-tag owner active';
-        allTag.innerHTML = `
-            <i class="fas fa-users"></i>
-            All
-        `;
-        allTag.onclick = () => filterByOwner('all', allTag);
-        tagsContainer.appendChild(allTag);
-        
-        assignedOwners.forEach(owner => {
-            const tag = document.createElement('div');
-            tag.className = 'category-tag owner';
-            tag.innerHTML = `
-                <i class="fas fa-user"></i>
-                ${owner}
-            `;
-            tag.onclick = () => filterByOwner(owner, tag);
-            tagsContainer.appendChild(tag);
-        });
-    }
-
-    function filterByOwner(owner, clickedTag) {
-        // Update active state of tags
-        document.querySelectorAll('.category-tag.owner').forEach(tag => {
-            tag.classList.remove('active');
-        });
-        clickedTag.classList.add('active');
-
-        // Filter tasks
-        document.querySelectorAll('.task').forEach(task => {
-            const taskOwner = task.querySelector('.owner-tag').textContent;
-            if (owner === 'all' || taskOwner === owner) {
-                task.style.display = 'flex';
-                task.closest('.section').style.display = 'block';
-            } else {
-                task.style.display = 'none';
-                // Hide section if all its tasks are hidden
-                const section = task.closest('.section');
-                const visibleTasks = section.querySelectorAll('.task[style="display: flex;"]');
-                if (visibleTasks.length === 0) {
-                    section.style.display = 'none';
-                }
-            }
-        });
-    }
-
-    let isEditMode = false;
-
-    function toggleEditMode() {
-        isEditMode = !isEditMode;
-        document.body.classList.toggle('edit-mode', isEditMode);
-        document.querySelector('.edit-actions').style.display = isEditMode ? 'flex' : 'none';
-        
-        const tasks = document.querySelectorAll('.task span');
-        tasks.forEach(task => {
-            task.contentEditable = isEditMode;
-        });
-
-        // Enable/disable drag and drop
-        setupDragAndDrop(isEditMode);
-    }
-
-    function setupDragAndDrop(enable) {
-        const tasks = document.querySelectorAll('.task');
-        const sections = document.querySelectorAll('.section');
-
-        if (enable) {
-            tasks.forEach(task => {
-                task.draggable = true;
-                task.addEventListener('dragstart', handleDragStart);
-                task.addEventListener('dragend', handleDragEnd);
-                task.addEventListener('dragover', handleDragOver);
-                task.addEventListener('drop', handleDrop);
-            });
-
-            sections.forEach(section => {
-                section.draggable = true;
-                section.addEventListener('dragstart', handleDragStart);
-                section.addEventListener('dragend', handleDragEnd);
-                section.addEventListener('dragover', handleDragOver);
-                section.addEventListener('drop', handleDrop);
-            });
-        } else {
-            tasks.forEach(task => {
-                task.draggable = false;
-                task.removeEventListener('dragstart', handleDragStart);
-                task.removeEventListener('dragend', handleDragEnd);
-                task.removeEventListener('dragover', handleDragOver);
-                task.removeEventListener('drop', handleDrop);
-            });
-        }
-    }
-
-    function handleDragStart(e) {
-        e.target.classList.add('dragging');
-    }
-
-    function handleDragEnd(e) {
-        e.target.classList.remove('dragging');
-    }
-
-    function handleDragOver(e) {
-        e.preventDefault();
-    }
-
-    function handleDrop(e) {
-        e.preventDefault();
-        const draggingElement = document.querySelector('.dragging');
-        const dropTarget = e.target.closest('.task') || e.target.closest('.section');
-        
-        if (draggingElement && dropTarget && draggingElement !== dropTarget) {
-            if (draggingElement.classList.contains('task')) {
-                dropTarget.parentNode.insertBefore(draggingElement, dropTarget);
-            } else if (draggingElement.classList.contains('section')) {
-                const container = document.getElementById('taskSections');
-                container.insertBefore(draggingElement, dropTarget);
-            }
-            saveState();
-        }
-    }
-
-    function exportConfig() {
-        const config = {
-            sections: taskSections,
-            state: {
-                completedTasks: Array.from(document.querySelectorAll('.checkbox'))
-                    .map(cb => cb.classList.contains('checked')),
-                assignedOwners: Array.from(document.querySelectorAll('.owner-tag'))
-                    .map(tag => tag.textContent)
-            }
-        };
-        
-        const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'roadmap-config.json';
-        a.click();
-        URL.revokeObjectURL(url);
-    }
-
-    function importConfig() {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.json';
-        input.onchange = e => {
-            const file = e.target.files[0];
-            const reader = new FileReader();
-            reader.onload = event => {
-                try {
-                    const config = JSON.parse(event.target.result);
-                    taskSections = config.sections;
-                    generateTaskSections();
-                    if (config.state) {
-                        db.ref('roadmapState').set(config.state);
-                    }
-                    showNotification('Configuration imported successfully');
-                } catch (err) {
-                    showNotification('Error importing configuration');
-                }
-            };
-            reader.readAsText(file);
-        };
-        input.click();
-    }
     </script>
 </body>
 </html>
