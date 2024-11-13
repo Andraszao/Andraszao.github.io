@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wish Upon Development Roadmap</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
     <style>
         :root {
             --bg-color: #0a0d1c;
@@ -348,7 +351,277 @@
         .task.filtered {
             display: none;
         }
+
+        .toggle-edit {
+            background: rgba(96, 165, 250, 0.2);
+            color: var(--accent-blue);
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+            margin-top: 1rem;
+        }
+
+        .toggle-edit:hover {
+            background: rgba(96, 165, 250, 0.3);
+        }
+
+        .toggle-edit.active {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        .editable {
+            border: 1px dashed transparent;
+            padding: 2px 4px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .edit-mode .editable {
+            border-color: rgba(96, 165, 250, 0.4);
+            cursor: pointer;
+        }
+
+        .edit-mode .editable:hover {
+            background: rgba(96, 165, 250, 0.1);
+        }
+
+        .edit-controls {
+            margin-top: 1rem;
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+        }
+
+        .edit-controls button {
+            background: rgba(96, 165, 250, 0.2);
+            color: var(--accent-blue);
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .edit-controls button:hover {
+            background: rgba(96, 165, 250, 0.3);
+        }
+
+        .task-actions {
+            display: none;
+            gap: 0.5rem;
+            margin-left: 1rem;
+        }
+
+        .edit-mode .task-actions {
+            display: flex;
+        }
+
+        .action-btn {
+            padding: 0.25rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            opacity: 0.6;
+            transition: all 0.2s ease;
+        }
+
+        .action-btn:hover {
+            opacity: 1;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .delete-btn {
+            color: #ef4444;
+        }
+
+        .move-btn {
+            cursor: grab;
+        }
+
+        .moving {
+            opacity: 0.5;
+            background: rgba(96, 165, 250, 0.1);
+        }
+
+        .drop-target {
+            border-top: 2px solid var(--accent-blue);
+        }
+
+        .unsaved-changes {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+
+        .add-task-btn {
+            background: rgba(96, 165, 250, 0.2);
+            color: var(--accent-blue);
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+            margin-top: 1rem;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .add-task-btn:hover {
+            background: rgba(96, 165, 250, 0.3);
+        }
+
+        .share-controls {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 1rem;
+        }
+
+        .share-btn, .donate-btn {
+            background: rgba(167, 139, 250, 0.1);
+            color: var(--accent-purple);
+            border: 1px solid rgba(167, 139, 250, 0.2);
+            padding: 0.5rem 1.5rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+
+        .share-btn:hover, .donate-btn:hover {
+            background: rgba(167, 139, 250, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .donate-btn {
+            background: rgba(252, 211, 77, 0.1);
+            color: var(--accent-gold);
+            border-color: rgba(252, 211, 77, 0.2);
+        }
+
+        .donate-btn:hover {
+            background: rgba(252, 211, 77, 0.2);
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal {
+            background: var(--card-bg);
+            border-radius: 1rem;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            color: var(--accent-purple);
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 1.25rem;
+        }
+
+        .fork-options {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .fork-option {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .fork-option:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .fork-option-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--accent-blue);
+        }
     </style>
+    <script>
+        // Global variables
+        let isEditMode = false;
+        let hasUnsavedChanges = false;
+        let draggedElement = null;
+        
+        // Firebase variables
+        let app;
+        let db;
+        let sectionsRef;
+        let winsRef;
+        let presenceRef;
+
+        // Initialize Firebase after config is loaded
+        function initFirebase() {
+            try {
+                app = firebase.initializeApp(firebaseConfig);
+                db = firebase.database();
+                sectionsRef = db.ref('taskSections');
+                winsRef = db.ref('wins');
+                presenceRef = db.ref('presence');
+                
+                // Setup listeners
+                initializeFirebase();
+            } catch (error) {
+                console.error('Firebase initialization failed:', error);
+                // Fallback to localStorage if Firebase fails
+                showNotification('Failed to connect to cloud, using local storage', 'warning');
+            }
+        }
+    </script>
 </head>
 <body>
     <div class="stars"></div>
@@ -356,16 +629,40 @@
         <header>
             <h1>Wish Upon</h1>
             <p class="subtitle">Development Constellation Map</p>
+            <div class="edit-mode-toggle">
+                <button class="toggle-edit" onclick="toggleEditMode()">
+                    <i class="fas fa-edit"></i>
+                    <span>Infinite Cosmic Power Mode</span>
+                </button>
+                <div class="edit-controls" style="display: none;">
+                    <button class="add-section-btn" onclick="addNewSection()">
+                        <i class="fas fa-plus"></i> Add Section
+                    </button>
+                    <button class="save-changes-btn" onclick="saveAllChanges()">
+                        <i class="fas fa-save"></i> Save All
+                    </button>
+                </div>
+            </div>
+            <div class="share-controls">
+                <button class="share-btn" onclick="shareProject()">
+                    <i class="fas fa-code-branch"></i>
+                    <span>Fork Project</span>
+                </button>
+                <a href="https://ko-fi.com/inchwormgames" target="_blank" class="donate-btn">
+                    <i class="fas fa-heart"></i>
+                    <span>Support Project</span>
+                </a>
+            </div>
         </header>
 
         <div class="wins-section">
             <div class="wins-header">
                 <div class="wins-title">
                     <i class="fas fa-trophy"></i>
-                    Recent Wins
+                    Recent Inches
                 </div>
                 <button class="add-win" onclick="addWin()">
-                    <i class="fas fa-plus"></i> Add Win
+                    <i class="fas fa-plus"></i> Add Inch
                 </button>
             </div>
             <div id="winsList"></div>
@@ -397,151 +694,318 @@
         <main id="taskSections"></main>
     </div>
 
-    <!-- Firebase Scripts -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics-compat.js"></script>
-    <script src="js/firebase-config.js"></script>
-
     <script>
-    // Task Data Structure
-    const taskSections = [
-        {
-            id: 'movement',
-            title: 'Movement & Orbital Systems',
-            category: 'MVP',
-            icon: 'fa-rocket',
-            tasks: ['Player Movement', 'Planetary Orbit', 'Entering Orbit', 'Stay in Orbit', 'Leave Orbit']
-        },
-        {
-            id: 'level-systems',
-            title: 'Level Systems',
-            category: 'MVP',
-            icon: 'fa-layer-group',
-            tasks: [
-                'Level Completion',
-                'Black Hole Art',
-                'Level End Screen',
-                'Autosave',
-                'Level Transition',
-                'Level Transition Animation',
-                'Load Screen',
-                'Remove previous scene and load next'
-            ]
-        },
-        {
-            id: 'obstacles',
-            title: 'Obstacles & Boundaries',
-            category: 'MVP',
-            icon: 'fa-triangle-exclamation',
-            tasks: [
-                'Obstacle (Asteroid)',
-                'Asteroid Art',
-                'Collision and Physics',
-                'Movement',
-                'Breaking Animation',
-                'Spawning of smaller asteroids',
-                'Level Boundaries/Boundary System',
-                'Collision',
-                'Player Respawn/Level Restart'
-            ]
-        },
-        {
-            id: 'basic-levels',
-            title: 'Basic Levels',
-            category: 'MVP',
-            icon: 'fa-cubes',
-            tasks: [
-                'Level design for 1-2 levels',
-                'Implementation of 1-2 levels'
-            ]
-        },
-        {
-            id: 'save-system',
-            title: 'Save System',
-            category: 'Basic Game',
-            icon: 'fa-floppy-disk',
-            tasks: [
-                'Save Manager',
-                'Determine save aspects',
-                'Set up save/load system'
-            ]
-        },
-        {
-            id: 'menu-systems',
-            title: 'Menu Systems',
-            category: 'Basic Game',
-            icon: 'fa-bars',
-            tasks: [
-                'Main Menu',
-                'Menu Design',
-                'New Game Start',
-                'Save/Load Integration',
-                'Settings Integration'
-            ]
-        },
-        {
-            id: 'settings',
-            title: 'Settings',
-            category: 'Basic Game',
-            icon: 'fa-sliders',
-            tasks: [
-                'Video Settings',
-                'Audio Settings',
-                'Gameplay Settings'
-            ]
-        },
-        {
-            id: 'full-levels',
-            title: 'Full Level Implementation',
-            category: 'Basic Game',
-            icon: 'fa-cube',
-            tasks: [
-                'Design Segment Themes',
-                'Level Design (18 levels)',
-                'Implementation'
-            ]
-        },
-        {
-            id: 'hidden-levels',
-            title: 'Hidden Levels',
-            category: 'Nice to Have',
-            icon: 'fa-gem',
-            tasks: [
-                'Level Design (6 secret levels)',
-                'Secret Access System',
-                'Implementation'
-            ]
-        },
-        {
-            id: 'level-editor',
-            title: 'Level Editor',
-            category: 'Stretch Goals',
-            icon: 'fa-pencil',
-            tasks: [
-                'Basic Editor',
-                'Export System',
-                'Menu Integration',
-                'Level Sharing'
-            ]
-        },
-        {
-            id: 'art-assets',
-            title: 'Art Assets',
-            category: 'MVP',
-            icon: 'fa-palette',
-            tasks: [
-                'StarBoi Sprite',
-                'StarBoi Animations',
-                'Unique Planets (60)',
-                'Black Hole',
-                'Asteroids (5 variations)',
-                'Nebula Effects',
-                'Space Objects (10 variations)',
-                'Level Borders'
-            ]
+    // Initialize Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Reference to our main data nodes
+    const sectionsRef = db.ref('taskSections');
+    const winsRef = db.ref('wins');
+    const presenceRef = db.ref('presence');
+
+    // Setup real-time sync
+    function initializeFirebase() {
+        // Listen for section changes
+        sectionsRef.on('value', (snapshot) => {
+            const sections = snapshot.val() || [];
+            renderTaskSections(sections);
+        });
+
+        // Listen for wins changes
+        winsRef.on('value', (snapshot) => {
+            const wins = snapshot.val() || [];
+            renderWins(wins);
+        });
+
+        // Setup presence system
+        const userId = 'user_' + Math.random().toString(36).substr(2, 9);
+        presenceRef.child(userId).onDisconnect().remove();
+        presenceRef.child(userId).set({
+            timestamp: firebase.database.ServerValue.TIMESTAMP
+        });
+
+        // Show active users count
+        presenceRef.on('value', (snapshot) => {
+            const viewers = snapshot.numChildren();
+            document.querySelector('.subtitle').textContent = 
+                `Development Constellation Map • ${viewers} viewing`;
+        });
+    }
+
+    // Modified save function to use Firebase
+    function saveEditedContent() {
+        try {
+            const sections = Array.from(document.querySelectorAll('.section')).map(sectionEl => {
+                const sectionId = sectionEl.dataset.sectionId || `section_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                return {
+                    id: sectionId,
+                    title: sectionEl.querySelector('.section-title span').textContent,
+                    category: sectionEl.dataset.category || 'MVP',
+                    icon: sectionEl.querySelector('.section-icon').className.split(' ')[1],
+                    tasks: Array.from(sectionEl.querySelectorAll('.task')).map(task => ({
+                        id: task.dataset.taskId || `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                        name: task.querySelector('.task-name').textContent,
+                        completed: task.querySelector('.checkbox').classList.contains('checked'),
+                        assignee: task.querySelector('.owner-tag').textContent
+                    }))
+                };
+            });
+
+            // Update Firebase
+            sectionsRef.set(sections)
+                .then(() => {
+                    hasUnsavedChanges = false;
+                    updateSaveButton();
+                    showNotification('Changes saved to cloud ✨');
+                })
+                .catch(error => {
+                    console.error('Save failed:', error);
+                    showNotification('Failed to save changes', 'error');
+                });
+        } catch (error) {
+            console.error('Save failed:', error);
+            showNotification('Failed to save changes', 'error');
         }
-    ];
+    }
+
+    let isEditMode = false;
+    let hasUnsavedChanges = false;
+    let draggedElement = null;
+
+    function toggleEditMode() {
+        if (isEditMode && hasUnsavedChanges) {
+            if (!confirm('You have unsaved changes. Relinquish infinite cosmic power anyway?')) {
+                return;
+            }
+        }
+        
+        isEditMode = !isEditMode;
+        document.body.classList.toggle('edit-mode', isEditMode);
+        document.querySelector('.toggle-edit').classList.toggle('active', isEditMode);
+        document.querySelector('.edit-controls').style.display = isEditMode ? 'flex' : 'none';
+        
+        // Make all editable elements contentEditable
+        const editables = document.querySelectorAll('.editable');
+        editables.forEach(el => {
+            el.contentEditable = isEditMode;
+            if (isEditMode) {
+                el.dataset.originalContent = el.textContent;
+            }
+        });
+        
+        // Show/hide task actions
+        document.querySelectorAll('.task-actions').forEach(actions => {
+            actions.style.display = isEditMode ? 'flex' : 'none';
+        });
+        
+        // Show/hide add task buttons
+        document.querySelectorAll('.add-task-btn').forEach(btn => {
+            btn.style.display = isEditMode ? 'block' : 'none';
+        });
+        
+        if (!isEditMode) {
+            hasUnsavedChanges = false;
+            document.querySelector('.save-changes-btn').classList.remove('unsaved-changes');
+            saveEditedContent(); // Save changes when exiting edit mode
+        }
+    }
+
+    function addNewSection() {
+        const sectionId = 'section-' + Date.now();
+        const newSection = {
+            id: sectionId,
+            title: 'New Section',
+            category: 'MVP',
+            icon: 'fa-star',
+            tasks: ['New Task']
+        };
+        
+        // Create and append the new section element
+        const container = document.getElementById('taskSections');
+        const sectionEl = document.createElement('div');
+        sectionEl.className = 'section';
+        sectionEl.dataset.sectionId = sectionId;
+        sectionEl.innerHTML = `
+            <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-title">
+                    <i class="fas ${newSection.icon} section-icon"></i>
+                    <span class="editable" contenteditable="${isEditMode}">${newSection.title}</span>
+                    ${isEditMode ? `
+                        <div class="task-actions">
+                            <span class="action-btn delete-btn" onclick="deleteSection(this)">
+                                <i class="fas fa-trash"></i>
+                            </span>
+                        </div>
+                    ` : ''}
+                </div>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="section-content">
+                <div class="task">
+                    <div class="task-info">
+                        <div class="checkbox" onclick="toggleCheck(this)">
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <span class="task-name editable" contenteditable="${isEditMode}">New Task</span>
+                        ${isEditMode ? `
+                            <div class="task-actions">
+                                <span class="action-btn move-btn" draggable="true">
+                                    <i class="fas fa-grip-vertical"></i>
+                                </span>
+                                <span class="action-btn delete-btn" onclick="deleteTask(this)">
+                                    <i class="fas fa-trash"></i>
+                                </span>
+                            </div>
+                        ` : ''}
+                    </div>
+                    <div class="owner-tag" onclick="assignTask(this)">Assign</div>
+                </div>
+            </div>
+        `;
+        
+        // Add button to add new tasks
+        if (isEditMode) {
+            const addTaskBtn = document.createElement('button');
+            addTaskBtn.className = 'add-task-btn';
+            addTaskBtn.innerHTML = '<i class="fas fa-plus"></i> Add Task';
+            addTaskBtn.onclick = () => addNewTask(sectionEl);
+            sectionEl.querySelector('.section-content').appendChild(addTaskBtn);
+        }
+        
+        container.appendChild(sectionEl);
+        
+        // Setup drag and drop for the new tasks
+        sectionEl.querySelectorAll('.task').forEach(setupDragAndDrop);
+        
+        // Mark changes as unsaved
+        hasUnsavedChanges = true;
+        updateSaveButton();
+        
+        // Show notification
+        showNotification('New section added');
+    }
+
+    function addNewTask(sectionEl) {
+        const taskList = sectionEl.querySelector('.section-content');
+        const newTask = createTaskElement('New Task');
+        taskList.appendChild(newTask);
+        hasUnsavedChanges = true;
+        updateSaveButton();
+    }
+
+    function createTaskElement(taskName) {
+        const task = document.createElement('div');
+        task.className = 'task';
+        task.draggable = true;
+        task.innerHTML = `
+            <div class="task-info">
+                <div class="checkbox" onclick="toggleCheck(this)">
+                    <i class="fas fa-check"></i>
+                </div>
+                <span class="task-name editable">${taskName}</span>
+                <div class="task-actions">
+                    <span class="action-btn move-btn" draggable="true">
+                        <i class="fas fa-grip-vertical"></i>
+                    </span>
+                    <span class="action-btn delete-btn" onclick="deleteTask(this)">
+                        <i class="fas fa-trash"></i>
+                    </span>
+                </div>
+            </div>
+            <div class="owner-tag" onclick="assignTask(this)">Assign</div>
+        `;
+        
+        setupDragAndDrop(task);
+        return task;
+    }
+
+    function deleteTask(btn) {
+        if (confirm('Are you sure you want to delete this task?')) {
+            btn.closest('.task').remove();
+            hasUnsavedChanges = true;
+            updateSaveButton();
+        }
+    }
+
+    function deleteSection(btn) {
+        if (confirm('Are you sure you want to delete this section?')) {
+            btn.closest('.section').remove();
+            hasUnsavedChanges = true;
+            updateSaveButton();
+        }
+    }
+
+    function setupDragAndDrop(element) {
+        element.addEventListener('dragstart', (e) => {
+            draggedElement = element;
+            element.classList.add('moving');
+        });
+        
+        element.addEventListener('dragend', () => {
+            draggedElement.classList.remove('moving');
+            document.querySelectorAll('.drop-target').forEach(el => {
+                el.classList.remove('drop-target');
+            });
+        });
+        
+        element.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            const task = e.target.closest('.task');
+            if (task && task !== draggedElement) {
+                const rect = task.getBoundingClientRect();
+                const midpoint = rect.top + rect.height / 2;
+                if (e.clientY < midpoint) {
+                    task.classList.add('drop-target');
+                } else {
+                    task.nextElementSibling?.classList.add('drop-target');
+                }
+            }
+        });
+        
+        element.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const task = e.target.closest('.task');
+            if (task && task !== draggedElement) {
+                const rect = task.getBoundingClientRect();
+                const midpoint = rect.top + rect.height / 2;
+                if (e.clientY < midpoint) {
+                    task.parentNode.insertBefore(draggedElement, task);
+                } else {
+                    task.parentNode.insertBefore(draggedElement, task.nextElementSibling);
+                }
+                hasUnsavedChanges = true;
+                updateSaveButton();
+            }
+        });
+    }
+
+    function updateSaveButton() {
+        const saveBtn = document.querySelector('.save-changes-btn');
+        saveBtn.classList.toggle('unsaved-changes', hasUnsavedChanges);
+    }
+
+    function saveAllChanges() {
+        saveEditedContent();
+        hasUnsavedChanges = false;
+        updateSaveButton();
+    }
+
+    // Add event listener for content changes
+    document.addEventListener('input', (e) => {
+        if (isEditMode && e.target.classList.contains('editable')) {
+            hasUnsavedChanges = true;
+            updateSaveButton();
+        }
+    });
+
+    // Add window beforeunload handler
+    window.addEventListener('beforeunload', (e) => {
+        if (hasUnsavedChanges) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
 
     // Create star background
     function createStars() {
@@ -571,7 +1035,7 @@
                 <div class="section-header" onclick="toggleSection(this)">
                     <div class="section-title">
                         <i class="fas ${section.icon} section-icon"></i>
-                        ${section.title}
+                        <span class="editable">${section.title}</span>
                     </div>
                     <i class="fas fa-chevron-down"></i>
                 </div>
@@ -582,7 +1046,7 @@
                                 <div class="checkbox" onclick="toggleCheck(this)">
                                     <i class="fas fa-check"></i>
                                 </div>
-                                <span>${task}</span>
+                                <span class="task-name editable">${task}</span>
                             </div>
                             <div class="owner-tag" onclick="assignTask(this)">Assign</div>
                         </div>
@@ -615,31 +1079,38 @@
     function assignTask(tag) {
         const name = prompt('Assign task to:', tag.textContent === 'Assign' ? '' : tag.textContent);
         if (name === null) return;
+        
         tag.textContent = name || 'Assign';
+        
+        // Save state to localStorage
         saveState();
+        
+        // Update filters immediately
         updateAssigneeFilters();
-        showNotification(`Task assigned to ${name}`);
+        
+        showNotification(`Task assigned to ${name || 'nobody'}`);
     }
 
     // Add a new win
     function addWin() {
-        const win = prompt('What was accomplished?');
+        const win = prompt('What inch was accomplished?');
         if (!win) return;
         
-        const date = new Date().toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric'
-        });
+        const newWin = {
+            text: win,
+            date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+            timestamp: firebase.database.ServerValue.TIMESTAMP
+        };
 
-        // Get current wins first
-        db.ref('wins').once('value').then((snapshot) => {
-            const currentWins = snapshot.val() || [];
-            const newWins = [{
-                text: win,
-                date: date
-            }, ...currentWins];
-            db.ref('wins').set(newWins);
-        });
+        // Push the new win to Firebase
+        winsRef.push(newWin)
+            .then(() => {
+                showNotification('Inch added successfully!');
+            })
+            .catch(error => {
+                console.error('Failed to add inch:', error);
+                showNotification('Failed to add inch', 'error');
+            });
     }
 
     // Save current state
@@ -651,86 +1122,69 @@
                 .map(tag => tag.textContent),
             lastUpdated: new Date().toISOString()
         };
-        db.ref('roadmapState').set(state);
+        localStorage.setItem('roadmapState', JSON.stringify(state));
     }
 
     // Load saved state
     function loadState() {
-        db.ref('roadmapState').on('value', (snapshot) => {
-            const state = snapshot.val();
-            if (state) {
-                document.querySelectorAll('.checkbox').forEach((cb, i) => {
-                    const wasChecked = cb.classList.contains('checked');
-                    const shouldBeChecked = state.completedTasks[i];
-                    
-                    if (wasChecked !== shouldBeChecked) {
-                        // Visual feedback for change
-                        const taskElement = cb.closest('.task');
-                        taskElement.classList.add('task-updated');
-                        setTimeout(() => taskElement.classList.remove('task-updated'), 1000);
-                    }
-                    
-                    cb.classList.toggle('checked', shouldBeChecked);
-                });
+        const state = JSON.parse(localStorage.getItem('roadmapState'));
+        if (state) {
+            document.querySelectorAll('.checkbox').forEach((cb, i) => {
+                const wasChecked = cb.classList.contains('checked');
+                const shouldBeChecked = state.completedTasks[i];
+                
+                if (wasChecked !== shouldBeChecked) {
+                    const taskElement = cb.closest('.task');
+                    taskElement.classList.add('task-updated');
+                    setTimeout(() => taskElement.classList.remove('task-updated'), 1000);
+                }
+                
+                cb.classList.toggle('checked', shouldBeChecked);
+            });
 
-                document.querySelectorAll('.owner-tag').forEach((tag, i) => {
-                    const currentOwner = tag.textContent;
-                    const newOwner = state.assignedOwners[i];
-                    
-                    if (currentOwner !== newOwner && newOwner !== 'Assign') {
-                        // Visual feedback for assignment
-                        const taskElement = tag.closest('.task');
-                        taskElement.classList.add('task-updated');
-                        setTimeout(() => taskElement.classList.remove('task-updated'), 1000);
-                        tag.textContent = newOwner;
-                    }
-                });
+            document.querySelectorAll('.owner-tag').forEach((tag, i) => {
+                const currentOwner = tag.textContent;
+                const newOwner = state.assignedOwners[i];
+                
+                if (currentOwner !== newOwner && newOwner !== 'Assign') {
+                    const taskElement = tag.closest('.task');
+                    taskElement.classList.add('task-updated');
+                    setTimeout(() => taskElement.classList.remove('task-updated'), 1000);
+                }
+                tag.textContent = newOwner;
+            });
 
-                updateAssigneeFilters();
-            }
-        });
+            updateAssigneeFilters();
+        }
     }
 
-    function loadWins() {
-        db.ref('wins').on('value', (snapshot) => {
-            const wins = snapshot.val() || [];
-            const winsList = document.getElementById('winsList');
-            const currentWinCount = winsList.children.length;
-            
-            // Only animate if this is a new win being added
-            const shouldAnimate = wins.length > currentWinCount;
-            
-            winsList.innerHTML = '';
-            wins.forEach((win, index) => {
-                const winItem = document.createElement('div');
-                winItem.className = 'task';
-                if (shouldAnimate && index === 0) {
-                    winItem.classList.add('win-added');
-                }
-                winItem.innerHTML = `
-                    <span>${win.text}</span>
-                    <span class="win-date">${win.date}</span>
-                `;
-                winsList.appendChild(winItem);
+    function renderWins(snapshot) {
+        const winsList = document.getElementById('winsList');
+        winsList.innerHTML = '';
+        
+        // Convert Firebase snapshot to array and sort by timestamp
+        const wins = [];
+        snapshot.forEach(childSnapshot => {
+            wins.push({
+                id: childSnapshot.key,
+                ...childSnapshot.val()
             });
         });
-    }
-
-    function initializePresence() {
-        const presenceRef = db.ref('presence');
-        const userId = 'user_' + Math.random().toString(36).substr(2, 9);
         
-        // When this user connects
-        presenceRef.child(userId).onDisconnect().remove();
-        presenceRef.child(userId).set({
-            timestamp: firebase.database.ServerValue.TIMESTAMP
-        });
-
-        // Show who's online
-        presenceRef.on('value', (snapshot) => {
-            const viewers = snapshot.numChildren();
-            document.querySelector('.subtitle').textContent = 
-                `Development Constellation Map • ${viewers} viewing`;
+        // Sort by timestamp descending
+        wins.sort((a, b) => b.timestamp - a.timestamp);
+        
+        wins.forEach((win, index) => {
+            const winItem = document.createElement('div');
+            winItem.className = 'task';
+            if (index === 0) {
+                winItem.classList.add('win-added');
+            }
+            winItem.innerHTML = `
+                <span>${win.text}</span>
+                <span class="win-date">${win.date}</span>
+            `;
+            winsList.appendChild(winItem);
         });
     }
 
@@ -816,7 +1270,10 @@
 
         // Filter tasks
         document.querySelectorAll('.task').forEach(task => {
-            const taskAssignee = task.querySelector('.owner-tag').textContent;
+            const ownerTag = task.querySelector('.owner-tag');
+            if (!ownerTag) return; // Skip if no owner tag (like in wins section)
+            
+            const taskAssignee = ownerTag.textContent;
             const shouldShow = !assignee || taskAssignee === assignee;
             task.classList.toggle('filtered', !shouldShow);
         });
@@ -829,13 +1286,84 @@
         });
     }
 
+    function initializeContent() {
+        const savedSections = localStorage.getItem('taskSections');
+        if (savedSections) {
+            taskSections = JSON.parse(savedSections);
+        }
+        generateTaskSections();
+        loadWins();
+        loadState();
+        updateAssigneeFilters();
+    }
+
     // Initialize everything
-    createStars();
-    generateTaskSections();
-    loadWins();
-    loadState();
-    initializePresence();
-    updateAssigneeFilters();
+    document.addEventListener('DOMContentLoaded', function() {
+        createStars();
+        initializeContent();
+    });
+
+    function shareProject() {
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal">
+                <div class="modal-header">
+                    <div class="modal-title">Fork Project</div>
+                    <button class="close-modal" onclick="this.closest('.modal-overlay').remove()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="fork-options">
+                    <div class="fork-option" onclick="forkToGithub()">
+                        <div class="fork-option-header">
+                            <i class="fab fa-github"></i>
+                            <span>Fork to GitHub</span>
+                        </div>
+                        <p class="fork-description">Create a copy in your GitHub account</p>
+                    </div>
+                    <div class="fork-option" onclick="downloadProject()">
+                        <div class="fork-option-header">
+                            <i class="fas fa-download"></i>
+                            <span>Download Project</span>
+                        </div>
+                        <p class="fork-description">Download as ZIP file</p>
+                    </div>
+                    <div class="fork-option" onclick="copyToClipboard()">
+                        <div class="fork-option-header">
+                            <i class="fas fa-copy"></i>
+                            <span>Copy Source</span>
+                        </div>
+                        <p class="fork-description">Copy source code to clipboard</p>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    function forkToGithub() {
+        window.open('https://github.com/Andraszao/Andraszao.github.io/fork', '_blank');
+    }
+
+    function downloadProject() {
+        const content = document.documentElement.outerHTML;
+        const blob = new Blob([content], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'wish-upon-roadmap.html';
+        a.click();
+        URL.revokeObjectURL(url);
+        showNotification('Project downloaded successfully');
+    }
+
+    function copyToClipboard() {
+        const content = document.documentElement.outerHTML;
+        navigator.clipboard.writeText(content)
+            .then(() => showNotification('Source code copied to clipboard'))
+            .catch(err => showNotification('Failed to copy source code', 'error'));
+    }
     </script>
 </body>
 </html>
