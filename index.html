@@ -292,104 +292,6 @@
             .container { padding: 1rem; }
             .category-tag { padding: 0.4rem 1rem; }
         }
-
-        .assignee-filters {
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-            margin-bottom: 2rem;
-            flex-wrap: wrap;
-        }
-
-        .assignee-filter-container {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .assignee-filter-container .category-tag {
-            padding: 0.5rem 1rem;
-            border-radius: 2rem;
-            font-size: 0.875rem;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            backdrop-filter: blur(8px);
-            transition: all 0.3s ease;
-        }
-
-        .assignee-filter-container .category-tag:hover {
-            transform: translateY(-2px);
-        }
-
-        .assignee-filter-container .category-tag.mvp {
-            background: rgba(96, 165, 250, 0.1);
-            color: var(--accent-blue);
-            border: 1px solid rgba(96, 165, 250, 0.2);
-        }
-
-        .assignee-filter-container .category-tag.basic {
-            background: rgba(167, 139, 250, 0.1);
-            color: var(--accent-purple);
-            border: 1px solid rgba(167, 139, 250, 0.2);
-        }
-
-        .assignee-filter-container .category-tag.extra {
-            background: rgba(252, 211, 77, 0.1);
-            color: var(--accent-gold);
-            border: 1px solid rgba(252, 211, 77, 0.2);
-        }
-
-        .assignee-filter-container .category-tag.all {
-            background: rgba(255, 255, 255, 0.1);
-            color: var(--text-primary);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .assignee-filter-container .category-tag.all.active {
-            background: rgba(96, 165, 250, 0.1);
-            color: var(--accent-blue);
-            border: 1px solid rgba(96, 165, 250, 0.2);
-        }
-
-        .assignee-filters {
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-            margin-bottom: 2rem;
-            flex-wrap: wrap;
-        }
-
-        .assignee-filter-container {
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-        }
-
-        .assignee-tag {
-            padding: 0.5rem 1.5rem;
-            border-radius: 2rem;
-            font-size: 0.875rem;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            backdrop-filter: blur(8px);
-            cursor: pointer;
-            background: rgba(167, 139, 250, 0.1);
-            color: var(--accent-purple);
-            border: 1px solid rgba(167, 139, 250, 0.2);
-            transition: all 0.3s ease;
-        }
-
-        .assignee-tag:hover, .assignee-tag.active {
-            background: rgba(167, 139, 250, 0.2);
-            transform: translateY(-2px);
-        }
-
-        .task.hidden {
-            display: none;
-        }
     </style>
 </head>
 <body>
@@ -664,7 +566,6 @@
         if (name === null) return;
         tag.textContent = name || 'Assign';
         saveState();
-        updateAssigneeTags();
         showNotification(`Task assigned to ${name}`);
     }
 
@@ -733,7 +634,6 @@
                     }
                 });
             }
-            updateAssigneeTags();
         });
     }
 
@@ -818,52 +718,6 @@
     loadWins();
     loadState();
     initializePresence();  // Added presence feature
-
-    // Add these new functions to your JavaScript
-    function updateAssigneeTags() {
-        const assigneeFilters = document.getElementById('assigneeFilters');
-        const ownerTags = Array.from(document.querySelectorAll('.owner-tag'));
-        const assignees = new Set();
-        
-        ownerTags.forEach(tag => {
-            const name = tag.textContent;
-            if (name !== 'Assign') {
-                assignees.add(name);
-            }
-        });
-        
-        assigneeFilters.innerHTML = '';
-        
-        assignees.forEach(assignee => {
-            const filterTag = document.createElement('div');
-            filterTag.className = 'assignee-tag';
-            filterTag.onclick = () => filterTasks(assignee);
-            filterTag.innerHTML = `
-                <i class="fas fa-user"></i>
-                ${assignee}
-            `;
-            assigneeFilters.appendChild(filterTag);
-        });
-    }
-
-    function filterTasks(assignee) {
-        document.querySelectorAll('.assignee-tag, .category-tag.all').forEach(tag => {
-            tag.classList.remove('active');
-            if ((assignee === 'all' && tag.classList.contains('all')) ||
-                (tag.textContent.trim() === assignee)) {
-                tag.classList.add('active');
-            }
-        });
-        
-        document.querySelectorAll('.task').forEach(task => {
-            const ownerTag = task.querySelector('.owner-tag');
-            if (assignee === 'all' || ownerTag.textContent === assignee) {
-                task.classList.remove('hidden');
-            } else {
-                task.classList.add('hidden');
-            }
-        });
-    }
     </script>
 </body>
 </html>
