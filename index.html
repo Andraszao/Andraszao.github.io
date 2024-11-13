@@ -596,31 +596,18 @@
         let isEditMode = false;
         let hasUnsavedChanges = false;
         let draggedElement = null;
-        
-        // Firebase variables
-        let app;
-        let db;
-        let sectionsRef;
-        let winsRef;
-        let presenceRef;
 
-        // Initialize Firebase after config is loaded
-        function initFirebase() {
-            try {
-                app = firebase.initializeApp(firebaseConfig);
-                db = firebase.database();
-                sectionsRef = db.ref('taskSections');
-                winsRef = db.ref('wins');
-                presenceRef = db.ref('presence');
-                
-                // Setup listeners
+        // Initialize everything when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            createStars();
+            
+            // Only initialize Firebase if we're on GitHub Pages
+            if (window.location.hostname.includes('github.io')) {
                 initializeFirebase();
-            } catch (error) {
-                console.error('Firebase initialization failed:', error);
-                // Fallback to localStorage if Firebase fails
-                showNotification('Failed to connect to cloud, using local storage', 'warning');
+            } else {
+                console.log('Running in local development mode');
             }
-        }
+        });
     </script>
 </head>
 <body>
@@ -1302,68 +1289,6 @@
         createStars();
         initializeContent();
     });
-
-    function shareProject() {
-        const modal = document.createElement('div');
-        modal.className = 'modal-overlay';
-        modal.innerHTML = `
-            <div class="modal">
-                <div class="modal-header">
-                    <div class="modal-title">Fork Project</div>
-                    <button class="close-modal" onclick="this.closest('.modal-overlay').remove()">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="fork-options">
-                    <div class="fork-option" onclick="forkToGithub()">
-                        <div class="fork-option-header">
-                            <i class="fab fa-github"></i>
-                            <span>Fork to GitHub</span>
-                        </div>
-                        <p class="fork-description">Create a copy in your GitHub account</p>
-                    </div>
-                    <div class="fork-option" onclick="downloadProject()">
-                        <div class="fork-option-header">
-                            <i class="fas fa-download"></i>
-                            <span>Download Project</span>
-                        </div>
-                        <p class="fork-description">Download as ZIP file</p>
-                    </div>
-                    <div class="fork-option" onclick="copyToClipboard()">
-                        <div class="fork-option-header">
-                            <i class="fas fa-copy"></i>
-                            <span>Copy Source</span>
-                        </div>
-                        <p class="fork-description">Copy source code to clipboard</p>
-                    </div>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(modal);
-    }
-
-    function forkToGithub() {
-        window.open('https://github.com/Andraszao/Andraszao.github.io/fork', '_blank');
-    }
-
-    function downloadProject() {
-        const content = document.documentElement.outerHTML;
-        const blob = new Blob([content], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'wish-upon-roadmap.html';
-        a.click();
-        URL.revokeObjectURL(url);
-        showNotification('Project downloaded successfully');
-    }
-
-    function copyToClipboard() {
-        const content = document.documentElement.outerHTML;
-        navigator.clipboard.writeText(content)
-            .then(() => showNotification('Source code copied to clipboard'))
-            .catch(err => showNotification('Failed to copy source code', 'error'));
-    }
     </script>
 </body>
 </html>
