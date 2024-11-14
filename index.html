@@ -571,15 +571,29 @@
             day: 'numeric'
         });
 
+        // Add console.log for debugging
+        console.log('Adding win:', win, date);
+
         // Get current wins first
-        db.ref('wins').once('value').then((snapshot) => {
-            const currentWins = snapshot.val() || [];
-            const newWins = [{
-                text: win,
-                date: date
-            }, ...currentWins];
-            db.ref('wins').set(newWins);
-        });
+        db.ref('wins').once('value')
+            .then((snapshot) => {
+                const currentWins = snapshot.val() || [];
+                const newWins = [{
+                    text: win,
+                    date: date
+                }, ...currentWins];
+                
+                // Add console.log for debugging
+                console.log('Saving wins:', newWins);
+                
+                return db.ref('wins').set(newWins);
+            })
+            .then(() => {
+                console.log('Win saved successfully');
+            })
+            .catch((error) => {
+                console.error('Error saving win:', error);
+            });
     }
 
     // Save current state
@@ -629,20 +643,20 @@
         });
     }
 
+    // Load wins function - Let's add debugging here too
     function loadWins() {
+        console.log('Loading wins...');
         db.ref('wins').on('value', (snapshot) => {
+            console.log('Wins data:', snapshot.val());
             const wins = snapshot.val() || [];
             const winsList = document.getElementById('winsList');
             const currentWinCount = winsList.children.length;
-            
-            // Only animate if this is a new win being added
-            const shouldAnimate = wins.length > currentWinCount;
             
             winsList.innerHTML = '';
             wins.forEach((win, index) => {
                 const winItem = document.createElement('div');
                 winItem.className = 'task';
-                if (shouldAnimate && index === 0) {
+                if (index === 0 && wins.length > currentWinCount) {
                     winItem.classList.add('win-added');
                 }
                 winItem.innerHTML = `
@@ -710,6 +724,9 @@
     loadWins();
     loadState();
     initializePresence();  // Added presence feature
+
+    // Add click handler for the add win button
+    document.querySelector('.add-win').onclick = addWin;
     </script>
 </body>
 </html>
