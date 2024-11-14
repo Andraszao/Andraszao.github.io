@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wish Upon Development Roadmap</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-color: #0a0d1c;
+            --card-bg: rgba(23, 25, 51, 0.7);
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --accent-blue: #60a5fa;
+            --accent-purple: #a78bfa;
+            --accent-gold: #fcd34d;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.2; }
+            50% { opacity: 0.8; }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        @keyframes update-glow {
+            0% { box-shadow: 0 0 0 0 rgba(96, 165, 250, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(96, 165, 250, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(96, 165, 250, 0); }
+        }
+
+        .task-updated {
+            animation: update-glow 0.8s ease-out;
+        }
+
+        .win-added {
+            animation: slide-in 0.3s ease-out;
+        }
+
+        @keyframes slide-in {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.5;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(to right, var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(96, 165, 250, 0.3);
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+        }
+
+        .categories {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .category-tag {
+            padding: 0.5rem 1.5rem;
+            border-radius: 2rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            backdrop-filter: blur(8px);
+            transition: all 0.3s ease;
+        }
+
+        .category-tag:hover {
+            transform: translateY(-2px);
+        }
+
+        .category-tag.mvp {
+            background: rgba(96, 165, 250, 0.1);
+            color: var(--accent-blue);
+            border: 1px solid rgba(96, 165, 250, 0.2);
+        }
+
+        .category-tag.basic {
+            background: rgba(167, 139, 250, 0.1);
+            color: var(--accent-purple);
+            border: 1px solid rgba(167, 139, 250, 0.2);
+        }
+
+        .category-tag.extra {
+            background: rgba(252, 211, 77, 0.1);
+            color: var(--accent-gold);
+            border: 1px solid rgba(252, 211, 77, 0.2);
+        }
+
+        .wins-section {
+            background: rgba(96, 165, 250, 0.1);
+            border: 1px solid rgba(96, 165, 250, 0.2);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 3rem;
+            backdrop-filter: blur(8px);
+        }
+
+        .wins-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .wins-title {
+            color: var(--accent-blue);
+            font-size: 1.2rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .add-win {
+            background: rgba(96, 165, 250, 0.2);
+            color: var(--accent-blue);
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+        }
+
+        .add-win:hover {
+            background: rgba(96, 165, 250, 0.3);
+        }
+
+        .section {
+            background: var(--card-bg);
+            border-radius: 1rem;
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            transition: all 0.3s ease;
+        }
+
+        .section:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .section-header {
+            padding: 1.25rem 1.5rem;
+            background: rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+
+        .section-icon {
+            color: var(--accent-blue);
+        }
+
+        .section-content {
+            display: none;
+            padding: 1.5rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .section.active .section-content {
+            display: block;
+        }
+
+        .task {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+            transition: all 0.2s ease;
+        }
+
+        .task:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .task-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .checkbox {
+            width: 1.25rem;
+            height: 1.25rem;
+            border: 2px solid var(--text-secondary);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: transparent;
+        }
+
+        .checkbox.checked {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+            color: white;
+        }
+
+        .owner-tag {
+            padding: 0.25rem 0.75rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .owner-tag:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 2.5rem; }
+            .container { padding: 1rem; }
+            .category-tag { padding: 0.4rem 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="stars"></div>
+    <div class="container">
+        <header>
+            <h1>Wish Upon</h1>
+            <p class="subtitle">Development Constellation Map</p>
+        </header>
+
+        <div class="wins-section">
+            <div class="wins-header">
+                <div class="wins-title">
+                    <i class="fas fa-trophy"></i>
+                    Recent Wins
+                </div>
+                <button class="add-win" onclick="addWin()">
+                    <i class="fas fa-plus"></i> Add Win
+                </button>
+            </div>
+            <div id="winsList"></div>
+        </div>
+
+        <div class="categories">
+            <div class="category-tag mvp">
+                <i class="fas fa-rocket"></i>
+                MVP
+            </div>
+            <div class="category-tag basic">
+                <i class="fas fa-puzzle-piece"></i>
+                Basic Game
+            </div>
+            <div class="category-tag extra">
+                <i class="fas fa-star"></i>
+                Extra Features
+            </div>
+        </div>
+
+        <main id="taskSections"></main>
+    </div>
+
+    <!-- Firebase Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-database-compat.js"></script>
+
+    <!-- Config file generated by GitHub Actions -->
+    <script src="js/firebase-config.js"></script>
+
+    <script>
+    // Initialize Firebase using config from firebase-config.js
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    
+    // Task Data Structure
+    const taskSections = [
+        {
+            id: 'movement',
+            title: 'Movement & Orbital Systems',
+            category: 'MVP',
+            icon: 'fa-rocket',
+            tasks: ['Player Movement', 'Planetary Orbit', 'Entering Orbit', 'Stay in Orbit', 'Leave Orbit']
+        },
+        {
+            id: 'level-systems',
+            title: 'Level Systems',
+            category: 'MVP',
+            icon: 'fa-layer-group',
+            tasks: [
+                'Level Completion',
+                'Black Hole Art',
+                'Level End Screen',
+                'Autosave',
+                'Level Transition',
+                'Level Transition Animation',
+                'Load Screen',
+                'Remove previous scene and load next'
+            ]
+        },
+        {
+            id: 'obstacles',
+            title: 'Obstacles & Boundaries',
+            category: 'MVP',
+            icon: 'fa-triangle-exclamation',
+            tasks: [
+                'Obstacle (Asteroid)',
+                'Asteroid Art',
+                'Collision and Physics',
+                'Movement',
+                'Breaking Animation',
+                'Spawning of smaller asteroids',
+                'Level Boundaries/Boundary System',
+                'Collision',
+                'Player Respawn/Level Restart'
+            ]
+        },
+        {
+            id: 'basic-levels',
+            title: 'Basic Levels',
+            category: 'MVP',
+            icon: 'fa-cubes',
+            tasks: [
+                'Level design for 1-2 levels',
+                'Implementation of 1-2 levels'
+            ]
+        },
+        {
+            id: 'save-system',
+            title: 'Save System',
+            category: 'Basic Game',
+            icon: 'fa-floppy-disk',
+            tasks: [
+                'Save Manager',
+                'Determine save aspects',
+                'Set up save/load system'
+            ]
+        },
+        {
+            id: 'menu-systems',
+            title: 'Menu Systems',
+            category: 'Basic Game',
+            icon: 'fa-bars',
+            tasks: [
+                'Main Menu',
+                'Menu Design',
+                'New Game Start',
+                'Save/Load Integration',
+                'Settings Integration'
+            ]
+        },
+        {
+            id: 'settings',
+            title: 'Settings',
+            category: 'Basic Game',
+            icon: 'fa-sliders',
+            tasks: [
+                'Video Settings',
+                'Audio Settings',
+                'Gameplay Settings'
+            ]
+        },
+        {
+            id: 'full-levels',
+            title: 'Full Level Implementation',
+            category: 'Basic Game',
+            icon: 'fa-cube',
+            tasks: [
+                'Design Segment Themes',
+                'Level Design (18 levels)',
+                'Implementation'
+            ]
+        },
+        {
+            id: 'hidden-levels',
+            title: 'Hidden Levels',
+            category: 'Nice to Have',
+            icon: 'fa-gem',
+            tasks: [
+                'Level Design (6 secret levels)',
+                'Secret Access System',
+                'Implementation'
+            ]
+        },
+        {
+            id: 'level-editor',
+            title: 'Level Editor',
+            category: 'Stretch Goals',
+            icon: 'fa-pencil',
+            tasks: [
+                'Basic Editor',
+                'Export System',
+                'Menu Integration',
+                'Level Sharing'
+            ]
+        },
+        {
+            id: 'art-assets',
+            title: 'Art Assets',
+            category: 'MVP',
+            icon: 'fa-palette',
+            tasks: [
+                'StarBoi Sprite',
+                'StarBoi Animations',
+                'Unique Planets (60)',
+                'Black Hole',
+                'Asteroids (5 variations)',
+                'Nebula Effects',
+                'Space Objects (10 variations)',
+                'Level Borders'
+            ]
+        }
+    ];
+
+    // Create star background
+    function createStars() {
+        const starsContainer = document.querySelector('.stars');
+        const starCount = 100;
+
+        for (let i = 0; i < starCount; i++) {
+            const star = document.createElement('div');
+            star.className = 'star';
+            star.style.left = Math.random() * 100 + '%';
+            star.style.top = Math.random() * 100 + '%';
+            const size = Math.random() * 3;
+            star.style.width = size + 'px';
+            star.style.height = size + 'px';
+            star.style.animation = `twinkle ${2 + Math.random() * 3}s infinite ${Math.random() * 2}s`;
+            starsContainer.appendChild(star);
+        }
+    }
+
+    // Generate task sections
+    function generateTaskSections() {
+        const container = document.getElementById('taskSections');
+        taskSections.forEach(section => {
+            const sectionEl = document.createElement('div');
+            sectionEl.className = 'section';
+            sectionEl.innerHTML = `
+                <div class="section-header" onclick="toggleSection(this)">
+                    <div class="section-title">
+                        <i class="fas ${section.icon} section-icon"></i>
+                        ${section.title}
+                    </div>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="section-content">
+                    ${section.tasks.map(task => `
+                        <div class="task">
+                            <div class="task-info">
+                                <div class="checkbox" onclick="toggleCheck(this)">
+                                    <i class="fas fa-check"></i>
+                                </div>
+                                <span>${task}</span>
+                            </div>
+                            <div class="owner-tag" onclick="assignTask(this)">Assign</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            container.appendChild(sectionEl);
+        });
+    }
+
+    // Toggle section expansion
+    function toggleSection(header) {
+        const section = header.parentElement;
+        const wasActive = section.classList.contains('active');
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        if (!wasActive) {
+            section.classList.add('active');
+        }
+        header.querySelector('.fa-chevron-down').style.transform = wasActive ? 'rotate(0deg)' : 'rotate(180deg)';
+    }
+
+    // Toggle task completion
+    function toggleCheck(checkbox) {
+        checkbox.classList.toggle('checked');
+        saveState();
+        showNotification("Task status updated");
+    }
+
+    // Assign task to person
+    function assignTask(tag) {
+        const name = prompt('Assign task to:', tag.textContent === 'Assign' ? '' : tag.textContent);
+        if (name === null) return;
+        tag.textContent = name || 'Assign';
+        saveState();
+        showNotification(`Task assigned to ${name}`);
+    }
+
+    // Add a new win
+    function addWin() {
+        const win = prompt('What was accomplished?');
+        if (!win) return;
+        
+        const date = new Date().toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric'
+        });
+
+        // Get current wins first
+        db.ref('wins').once('value').then((snapshot) => {
+            const currentWins = snapshot.val() || [];
+            const newWins = [{
+                text: win,
+                date: date
+            }, ...currentWins];
+            db.ref('wins').set(newWins);
+        });
+    }
+
+    // Save current state
+    function saveState() {
+        const state = {
+            completedTasks: Array.from(document.querySelectorAll('.checkbox'))
+                .map(cb => cb.classList.contains('checked')),
+            assignedOwners: Array.from(document.querySelectorAll('.owner-tag'))
+                .map(tag => tag.textContent),
+            lastUpdated: new Date().toISOString()
+        };
+        db.ref('roadmapState').set(state);
+    }
+
+    // Load saved state
+    function loadState() {
+        db.ref('roadmapState').on('value', (snapshot) => {
+            const state = snapshot.val();
+            if (state) {
+                document.querySelectorAll('.checkbox').forEach((cb, i) => {
+                    const wasChecked = cb.classList.contains('checked');
+                    const shouldBeChecked = state.completedTasks[i];
+                    
+                    if (wasChecked !== shouldBeChecked) {
+                        // Visual feedback for change
+                        const taskElement = cb.closest('.task');
+                        taskElement.classList.add('task-updated');
+                        setTimeout(() => taskElement.classList.remove('task-updated'), 1000);
+                    }
+                    
+                    cb.classList.toggle('checked', shouldBeChecked);
+                });
+
+                document.querySelectorAll('.owner-tag').forEach((tag, i) => {
+                    const currentOwner = tag.textContent;
+                    const newOwner = state.assignedOwners[i];
+                    
+                    if (currentOwner !== newOwner && newOwner !== 'Assign') {
+                        // Visual feedback for assignment
+                        const taskElement = tag.closest('.task');
+                        taskElement.classList.add('task-updated');
+                        setTimeout(() => taskElement.classList.remove('task-updated'), 1000);
+                        tag.textContent = newOwner;
+                    }
+                });
+            }
+        });
+    }
+
+    function loadWins() {
+        db.ref('wins').on('value', (snapshot) => {
+            const wins = snapshot.val() || [];
+            const winsList = document.getElementById('winsList');
+            const currentWinCount = winsList.children.length;
+            
+            // Only animate if this is a new win being added
+            const shouldAnimate = wins.length > currentWinCount;
+            
+            winsList.innerHTML = '';
+            wins.forEach((win, index) => {
+                const winItem = document.createElement('div');
+                winItem.className = 'task';
+                if (shouldAnimate && index === 0) {
+                    winItem.classList.add('win-added');
+                }
+                winItem.innerHTML = `
+                    <span>${win.text}</span>
+                    <span class="win-date">${win.date}</span>
+                `;
+                winsList.appendChild(winItem);
+            });
+        });
+    }
+
+    function initializePresence() {
+        const presenceRef = db.ref('presence');
+        const userId = 'user_' + Math.random().toString(36).substr(2, 9);
+        
+        // When this user connects
+        presenceRef.child(userId).onDisconnect().remove();
+        presenceRef.child(userId).set({
+            timestamp: firebase.database.ServerValue.TIMESTAMP
+        });
+
+        // Show who's online
+        presenceRef.on('value', (snapshot) => {
+            const viewers = snapshot.numChildren();
+            document.querySelector('.subtitle').textContent = 
+                `Development Constellation Map • ${viewers} viewing`;
+        });
+    }
+
+    // Add the new notification function
+    function showNotification(message) {
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            background: rgba(96, 165, 250, 0.2);
+            border: 1px solid rgba(96, 165, 250, 0.4);
+            border-radius: 8px;
+            color: var(--accent-blue);
+            backdrop-filter: blur(8px);
+            transform: translateY(100px);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        `;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+        
+        // Animate in
+        requestAnimationFrame(() => {
+            notification.style.transform = 'translateY(0)';
+        });
+        
+        // Remove after 3 seconds
+        setTimeout(() => {
+            notification.style.transform = 'translateY(100px)';
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    }
+
+    // Initialize everything
+    createStars();
+    generateTaskSections();
+    loadWins();
+    loadState();
+    initializePresence();  // Added presence feature
+    </script>
+</body>
+</html>
