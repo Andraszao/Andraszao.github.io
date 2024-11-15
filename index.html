@@ -784,39 +784,58 @@
         };
     }
 
-    async function saveState() {
-        lastLocalChange = Date.now();
-        
-        const state = {
-            version: '1.0',
-            lastModified: new Date().toISOString(),
-            projectName: document.querySelector('.project-name').textContent,
-            categories: Array.from(document.querySelectorAll('.task-group')).map(category => ({
-                id: category.dataset.id || crypto.randomUUID(),
-                name: category.querySelector('.category-name').textContent,
-                isExpanded: category.querySelector('.task-list').style.display !== 'none',
-                tasks: Array.from(category.querySelectorAll('.task-item')).map(task => ({
-                    id: task.dataset.id || crypto.randomUUID(),
-                    title: task.querySelector('.task-title').textContent,
-                    completed: task.querySelector('.task-status').classList.contains('completed'),
-                    assignee: task.querySelector('.task-assign').textContent,
-                    createdAt: task.dataset.createdAt || new Date().toISOString()
-                }))
-            }))
-        };
-        
-        try {
-            if (window.db) {
-                const taskId = 'default-task-list';
-                await set(ref(window.db, `tasks/${taskId}`), state);
-                console.log('Saved to Firebase');
-                updateSyncStatus('Synced to Cloud ☁️');
-            }
-        } catch (e) {
-            console.error('Failed to save to Firebase:', e);
-            localStorage.setItem('taskState', JSON.stringify(state));
-            updateSyncStatus('Saved Locally 💾');
+    // Centralized Firebase save function with state manager
+    async function saveToFirebase(changeType) {
+      if (window.isProcessingRemoteUpdate) return;
+
+      const state = taskManager.getState();
+      const timestamp = new Date().toISOString();
+      window.lastLocalUpdate = timestamp;
+      
+      // Convert state manager format to Firebase format
+      const firebaseData = {
+        projectName: state.projectName,
+        categories: Array.from(state.categories.values()),
+        tasks: Array.from(state.tasks.values()),
+        lastModified: timestamp,
+        changeType,
+        version: '1.0'
+      };
+      
+      try {
+        if (window.db) {
+          const taskId = 'default-task-list';
+          await set(ref(window.db, `tasks/${taskId}`), firebaseData);
+          console.log(`Saved to Firebase: ${changeType}`);
+          updateSyncStatus('Synced ☁️');
         }
+      } catch (e) {
+        console.error('Failed to save to Firebase:', e);
+        localStorage.setItem('taskState', JSON.stringify(firebaseData));
+        updateSyncStatus('Saved Locally 💾');
+      }
+    }
+
+    // Setup action handlers with state manager integration
+    function setupActionHandlers() {
+      const debouncedTextSave = debounce(() => {
+        saveToFirebase('content-update');
+      }, 2000);
+
+      const actionHandlers = {
+        'taskAdded': () => saveToFirebase('task-added'),
+        'taskDeleted': () => saveToFirebase('task-deleted'),
+        'taskCompleted': () => saveToFirebase('task-completed'),
+        'categoryAdded': () => saveToFirebase('category-added'),
+        'categoryDeleted': () => saveToFirebase('category-deleted'),
+        'assigneeChanged': () => saveToFirebase('assignee-changed')
+      };
+
+      Object.entries(actionHandlers).forEach(([event, handler]) => {
+        document.addEventListener(event, handler);
+      });
+
+      document.addEventListener('contentEdit', debouncedTextSave);
     }
 
     // Add this new function
@@ -879,21 +898,27 @@
                 const data = snapshot.val();
                 if (!data) return;
                 
-                // Skip if this update is too close to our last local change
-                if (Date.now() - lastLocalChange < 1000) {
-                    console.log('Skipping update - too close to local change');
-                    return;
+                // Skip if this is our own update
+                if (data.lastModified === window.lastLocalUpdate) {
+                  console.log('Skipping own update');
+                  return;
                 }
                 
-                // Skip if we just received an update
-                if (Date.now() - lastUpdateTime < 1000) {
-                    console.log('Skipping update - too frequent');
-                    return;
-                }
+                // Process remote update
+                window.isProcessingRemoteUpdate = true;
+                console.log('Processing remote update:', data.changeType);
                 
-                lastUpdateTime = Date.now();
-                console.log('Processing remote update');
-                renderState(data);
+                // Convert Firebase data format to state manager format
+                const stateData = {
+                  projectName: data.projectName,
+                  categories: data.categories || [],
+                  tasks: data.tasks || new Map(),
+                  editMode: false,
+                  lastSync: data.lastModified
+                };
+                
+                taskManager.dispatch({ type: 'LOAD_STATE', payload: stateData });
+                window.isProcessingRemoteUpdate = false;
             });
 
             // Update timestamp when we make local changes
@@ -920,7 +945,9 @@
     let activeAssignButton = null;
 
     function toggleEditMode() {
-      editMode = !editMode;
+      taskManager.dispatch({ type: 'TOGGLE_EDIT_MODE' });
+      const editMode = taskManager.getState().editMode;
+      
       document.querySelector('[onclick="toggleEditMode()"]').classList.toggle('active');
       
       document.querySelectorAll('.task-title, .category-name, .project-name').forEach(elem => {
@@ -941,9 +968,15 @@
     }
 
     function toggleStatus(status) {
-      status.classList.toggle('completed');
-      throttledUpdateStats();
-      document.dispatchEvent(new Event('taskEdited'));
+      const taskId = status.closest('.task-item').dataset.id;
+      taskManager.dispatch({
+        type: 'UPDATE_TASK',
+        payload: {
+          id: taskId,
+          completed: !status.classList.contains('completed')
+        }
+      });
+      document.dispatchEvent(new Event('taskCompleted'));
     }
 
     function updateStats() {
@@ -1030,26 +1063,19 @@
         return;
       }
       
-      const taskList = categoryEl.querySelector('.task-list');
-      if (!taskList) {
-        console.error('Task list not found in category');
-        return;
-      }
-
-      const newTask = document.createElement('div');
-      newTask.className = 'task-item';
-      newTask.innerHTML = `
-        <div class="task-status" onclick="toggleStatus(this)"></div>
-        <div class="task-info">
-          <div class="task-title" contenteditable="${editMode}" oninput="updateStats()">New Task</div>
-          <button class="task-assign" onclick="showAssigneePopup(this, event)">Unassigned</button>
-        </div>
-        <span class="delete-button" onclick="deleteTask(this)">×</span>
-      `;
+      const taskId = crypto.randomUUID();
+      const categoryId = categoryEl.dataset.id;
       
-      taskList.appendChild(newTask);
-      updateStats();
-      document.dispatchEvent(new Event('taskAdded'));
+      taskManager.dispatch({
+        type: 'ADD_TASK',
+        payload: {
+          id: taskId,
+          categoryId: categoryId,
+          title: 'New Task',
+          completed: false,
+          assignee: 'Unassigned'
+        }
+      });
     }
 
     function addCategory() {
@@ -1180,10 +1206,15 @@
     }
 
     function renderState(state) {
-      // Skip rendering if state hasn't changed
-      const currentState = JSON.stringify(state);
+      // Skip if state hasn't changed
+      const currentState = JSON.stringify({
+        projectName: state.projectName,
+        categories: Array.from(state.categories.values()),
+        tasks: Array.from(state.tasks.values())
+      });
+      
       if (window.lastRenderedState === currentState) {
-          return;
+        return;
       }
       window.lastRenderedState = currentState;
 
@@ -1361,6 +1392,161 @@
 
     // Throttle the updateStats function
     const throttledUpdateStats = throttle(updateStats, 1000);
+
+    // State Manager Implementation
+    class TaskStateManager {
+      constructor() {
+        this.state = {
+          projectName: 'Wish Upon',
+          categories: new Map(),
+          tasks: new Map(),
+          editMode: false,
+          lastSync: null
+        };
+        
+        this.subscribers = new Set();
+        this.pendingUpdates = new Map();
+        this.updateScheduled = false;
+        this.lastLocalChange = Date.now();
+      }
+
+      subscribe(callback) {
+        this.subscribers.add(callback);
+        return () => this.subscribers.delete(callback);
+      }
+
+      dispatch(action) {
+        const nextState = this.reducer(this.state, action);
+        if (nextState !== this.state) {
+          this.state = nextState;
+          this.notifySubscribers();
+        }
+      }
+
+      notifySubscribers() {
+        if (!this.updateScheduled) {
+          this.updateScheduled = true;
+          requestAnimationFrame(() => {
+            this.subscribers.forEach(callback => callback(this.state));
+            this.updateScheduled = false;
+          });
+        }
+      }
+
+      reducer(state, action) {
+        switch (action.type) {
+          case 'SET_PROJECT_NAME':
+            return { ...state, projectName: action.payload };
+            
+          case 'ADD_CATEGORY':
+            return {
+              ...state,
+              categories: new Map(state.categories).set(action.payload.id, action.payload)
+            };
+            
+          case 'ADD_TASK':
+            return {
+              ...state,
+              tasks: new Map(state.tasks).set(action.payload.id, {
+                ...action.payload,
+                createdAt: Date.now(),
+                version: 1
+              })
+            };
+            
+          case 'UPDATE_TASK':
+            const task = state.tasks.get(action.payload.id);
+            if (!task) return state;
+            
+            return {
+              ...state,
+              tasks: new Map(state.tasks).set(action.payload.id, {
+                ...task,
+                ...action.payload,
+                version: task.version + 1
+              })
+            };
+            
+          case 'DELETE_TASK':
+            const newTasks = new Map(state.tasks);
+            newTasks.delete(action.payload.id);
+            return { ...state, tasks: newTasks };
+            
+          case 'DELETE_CATEGORY':
+            const newCategories = new Map(state.categories);
+            newCategories.delete(action.payload.id);
+            return { ...state, categories: newCategories };
+            
+          case 'TOGGLE_EDIT_MODE':
+            return { ...state, editMode: !state.editMode };
+            
+          case 'LOAD_STATE':
+            return {
+              ...state,
+              projectName: action.payload.projectName || state.projectName,
+              categories: new Map(action.payload.categories.map(cat => [cat.id, cat])),
+              tasks: new Map(action.payload.categories
+                .flatMap(cat => cat.tasks)
+                .filter(Boolean)
+                .map(task => [task.id, task]))
+            };
+            
+          case 'SYNC_STATE':
+            return {
+              ...state,
+              lastSync: action.payload.timestamp,
+              categories: new Map([...state.categories].map(([id, cat]) => [
+                id,
+                { ...cat, syncedVersion: cat.version }
+              ])),
+              tasks: new Map([...state.tasks].map(([id, task]) => [
+                id,
+                { ...task, syncedVersion: task.version }
+              ]))
+            };
+            
+          default:
+            return state;
+        }
+      }
+
+      getState() {
+        return this.state;
+      }
+    }
+
+    // Initialize state manager
+    window.taskManager = new TaskStateManager();
+
+    taskManager.subscribe(state => {
+      renderState(state);
+    });
+
+    // Replace scattered event listeners with centralized handlers
+    function setupEventHandlers() {
+      const debouncedSync = debounce((changeType) => {
+        if (!window.isProcessingRemoteUpdate) {
+          saveToFirebase(changeType);
+        }
+      }, 2000);
+
+      taskManager.subscribe((state) => {
+        // Trigger sync on state changes
+        debouncedSync('state-update');
+        
+        // Update UI elements that depend on state
+        updateStats();
+        updateAssigneeFilters();
+        
+        // Update leaderboard if visible
+        if (document.getElementById('leaderboard-overlay').style.display === 'block') {
+          updateLeaderboard();
+        }
+      });
+    }
+
+    // Call this after initializing the state manager
+    setupEventHandlers();
   </script>
 </body>
 </html>
