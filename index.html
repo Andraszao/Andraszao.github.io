@@ -706,6 +706,23 @@
       transform: translateZ(0);
       backface-visibility: hidden;
     }
+
+    /* Empty state indicators */
+    .task-list:empty::before {
+        content: 'No tasks yet. Click "+ Add Task" to get started.';
+        display: block;
+        padding: 1.5rem;
+        text-align: center;
+        color: #94a3b8;
+        font-style: italic;
+    }
+
+    #task-container:empty + .add-category::before {
+        content: '👋 Welcome! Start by adding a category';
+        display: block;
+        margin-bottom: 0.5rem;
+        color: #94a3b8;
+    }
   </style>
 </head>
 <body>
