@@ -643,12 +643,33 @@
             // Set up realtime listener
             const taskId = 'default-task-list';
             const tasksRef = ref(window.db, `tasks/${taskId}`);
+            
+            // First, try to get initial data
+            const snapshot = await get(tasksRef);
+            if (snapshot.exists()) {
+                console.log('Initial data loaded from Firebase');
+                renderState(snapshot.val());
+            } else {
+                console.log('No existing data in Firebase, loading default state');
+                // Load default state or localStorage backup
+                const savedState = localStorage.getItem('taskState');
+                if (savedState) {
+                    const state = JSON.parse(savedState);
+                    renderState(state);
+                    // Save localStorage data to Firebase
+                    await set(tasksRef, state);
+                }
+            }
+
+            // Then set up realtime listener for future changes
             onValue(tasksRef, (snapshot) => {
                 const data = snapshot.val();
                 if (data) {
+                    console.log('Realtime update received:', data);
                     renderState(data);
                 }
             });
+
         } catch (e) {
             console.error('Firebase initialization failed:', e);
             // Load from localStorage if available
@@ -691,6 +712,7 @@
     function toggleStatus(status) {
       status.classList.toggle('completed');
       updateStats();
+      document.dispatchEvent(new Event('taskEdited'));
     }
 
     function updateStats() {
@@ -765,6 +787,7 @@
       
       taskList.appendChild(newTask);
       updateStats();
+      document.dispatchEvent(new Event('taskAdded'));
     }
 
     function addCategory() {
@@ -788,11 +811,13 @@
         <div class="task-list"></div>
       `;
       container.appendChild(category);
+      document.dispatchEvent(new Event('categoryAdded'));
     }
 
     function deleteTask(button) {
       button.closest('.task-item').remove();
       updateStats();
+      document.dispatchEvent(new Event('taskDeleted'));
     }
 
     function deleteCategory(event, button) {
@@ -800,6 +825,7 @@
       if (confirm('Delete this category and all its tasks?')) {
         button.closest('.task-group').remove();
         updateStats();
+        document.dispatchEvent(new Event('categoryDeleted'));
       }
     }
 
@@ -946,6 +972,13 @@
         });
       });
     }
+
+    // Add these after your existing event listeners
+    document.addEventListener('taskAdded', () => window.debouncedSave());
+    document.addEventListener('taskDeleted', () => window.debouncedSave());
+    document.addEventListener('taskEdited', () => window.debouncedSave());
+    document.addEventListener('categoryAdded', () => window.debouncedSave());
+    document.addEventListener('categoryDeleted', () => window.debouncedSave());
   </script>
 </body>
 </html>
