@@ -1198,10 +1198,10 @@
       localStorage.setItem('taskState', JSON.stringify(state));
 
       // If Firebase is initialized, save to Firebase
-      if (window.db) {
+      if (window.db && window.firebaseRef && window.firebaseSet) {
         const taskId = 'default-task-list';
-        const tasksRef = ref(window.db, `tasks/${taskId}`);
-        set(tasksRef, state).catch(error => {
+        const tasksRef = window.firebaseRef(window.db, `tasks/${taskId}`);
+        window.firebaseSet(tasksRef, state).catch(error => {
           console.error('Error saving to Firebase:', error);
         });
       }
@@ -1222,6 +1222,10 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
     import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
+
+    // Make Firebase functions globally available
+    window.firebaseRef = ref;
+    window.firebaseSet = set;
 
     async function init() {
       try {
