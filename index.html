@@ -785,7 +785,7 @@
     }
 
     async function saveState() {
-        markLocalUpdate(); // Mark this as a local update
+        lastLocalChange = Date.now();
         
         const state = {
             version: '1.0',
@@ -870,25 +870,35 @@
                 }
             }
 
-            // Add a timestamp to track local changes
-            let lastLocalUpdate = Date.now();
+            // Add timestamp tracking for updates
+            let lastUpdateTime = Date.now();
+            let lastLocalChange = Date.now();
 
-            // Modified realtime listener with update prevention
+            // Modified Firebase listener
             onValue(tasksRef, (snapshot) => {
                 const data = snapshot.val();
                 if (!data) return;
                 
-                // Only update if the change came from another client
-                // and it's been at least 6 seconds since our last local update
-                if (Date.now() - lastLocalUpdate > 6000) {
-                    console.log('Remote update received');
-                    renderState(data);
+                // Skip if this update is too close to our last local change
+                if (Date.now() - lastLocalChange < 1000) {
+                    console.log('Skipping update - too close to local change');
+                    return;
                 }
+                
+                // Skip if we just received an update
+                if (Date.now() - lastUpdateTime < 1000) {
+                    console.log('Skipping update - too frequent');
+                    return;
+                }
+                
+                lastUpdateTime = Date.now();
+                console.log('Processing remote update');
+                renderState(data);
             });
 
             // Update timestamp when we make local changes
             function markLocalUpdate() {
-                lastLocalUpdate = Date.now();
+                lastLocalChange = Date.now();
             }
 
         } catch (e) {
@@ -1258,23 +1268,32 @@
       });
     }
 
-    // Create a single debounced save function with a longer delay
-    window.debouncedSave = debounce(saveState, 5000); // 5 second delay
-
-    // Only trigger saves on actual data changes
-    document.addEventListener('taskAdded', () => window.debouncedSave());
-    document.addEventListener('taskDeleted', () => window.debouncedSave());
-    document.addEventListener('categoryAdded', () => window.debouncedSave());
-    document.addEventListener('categoryDeleted', () => window.debouncedSave());
-
-    // For content edits, we'll use a separate handler
-    function handleContentEdit(event) {
-        const content = event.target.textContent.trim();
-        if (!content) {
-            event.target.textContent = event.target.classList.contains('task-title') ? 'New Task' : 'New Category';
+    // Create a batched save function with a longer delay
+    window.debouncedSave = debounce(() => {
+        // Only save if there have been no updates in the last second
+        if (Date.now() - lastUpdateTime > 1000) {
+            saveState();
         }
-        window.debouncedSave();
+    }, 2000);
+
+    // Batch multiple changes together
+    let changesPending = false;
+    function batchedSave() {
+        if (!changesPending) {
+            changesPending = true;
+            requestAnimationFrame(() => {
+                window.debouncedSave();
+                changesPending = false;
+            });
+        }
     }
+
+    // Update event listeners to use batched save
+    document.addEventListener('taskAdded', batchedSave);
+    document.addEventListener('taskDeleted', batchedSave);
+    document.addEventListener('taskEdited', batchedSave);
+    document.addEventListener('categoryAdded', batchedSave);
+    document.addEventListener('categoryDeleted', batchedSave);
 
     function toggleLeaderboard() {
       const overlay = document.getElementById('leaderboard-overlay');
