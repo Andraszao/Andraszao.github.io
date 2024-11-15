@@ -563,77 +563,85 @@
   </div>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
-    import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-database.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-analytics.js";
-    import firebaseConfig from './firebase-config.js';
+    // Firebase initialization
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
 
-    // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const analytics = getAnalytics(app);
-    const db = getDatabase(app);
-
-    // Make Firebase functions available globally
-    window.db = db;
-    window.dbRef = ref;
-    window.dbSet = set;
-    window.dbGet = get;
-    window.dbOnValue = onValue;
-
-    // Update saveState to use Firebase
+    // Make these functions available globally
     window.saveState = async function() {
-      const state = {
-        version: '1.0',
-        lastModified: new Date().toISOString(),
-        projectName: document.querySelector('.project-name').textContent,
-        categories: Array.from(document.querySelectorAll('.task-group')).map(category => ({
-          id: category.dataset.id || crypto.randomUUID(),
-          name: category.querySelector('.category-name').textContent,
-          isExpanded: category.querySelector('.task-list').style.display !== 'none',
-          tasks: Array.from(category.querySelectorAll('.task-item')).map(task => ({
-            id: task.dataset.id || crypto.randomUUID(),
-            title: task.querySelector('.task-title').textContent,
-            completed: task.querySelector('.task-status').classList.contains('completed'),
-            assignee: task.querySelector('.task-assign').textContent,
-            createdAt: task.dataset.createdAt || new Date().toISOString()
-          }))
-        }))
-      };
-      
-      try {
-        await set(ref(db, 'tasks'), state);
-        console.log('Saved to Firebase');
-      } catch (e) {
-        console.error('Failed to save to Firebase:', e);
-      }
-    };
-
-    // Update loadState to use Firebase
-    window.loadState = async function() {
-      try {
-        // Initial load
-        const snapshot = await get(ref(db, 'tasks'));
-        if (snapshot.exists()) {
-          renderState(snapshot.val());
-        } else {
-          addCategory(); // Initialize with empty category
+        const state = {
+            version: '1.0',
+            lastModified: new Date().toISOString(),
+            projectName: document.querySelector('.project-name').textContent,
+            categories: Array.from(document.querySelectorAll('.task-group')).map(category => ({
+                id: category.dataset.id || crypto.randomUUID(),
+                name: category.querySelector('.category-name').textContent,
+                isExpanded: category.querySelector('.task-list').style.display !== 'none',
+                tasks: Array.from(category.querySelectorAll('.task-item')).map(task => ({
+                    id: task.dataset.id || crypto.randomUUID(),
+                    title: task.querySelector('.task-title').textContent,
+                    completed: task.querySelector('.task-status').classList.contains('completed'),
+                    assignee: task.querySelector('.task-assign').textContent,
+                    createdAt: task.dataset.createdAt || new Date().toISOString()
+                }))
+            }))
+        };
+        
+        try {
+            const db = getDatabase();
+            await set(ref(db, 'tasks'), state);
+            console.log('Saved to Firebase');
+        } catch (e) {
+            console.error('Failed to save to Firebase:', e);
+            // Fallback to localStorage
+            localStorage.setItem('taskState', JSON.stringify(state));
         }
-
-        // Listen for real-time updates
-        onValue(ref(db, 'tasks'), (snapshot) => {
-          if (snapshot.exists()) {
-            renderState(snapshot.val());
-          }
-        });
-      } catch (e) {
-        console.error('Failed to load from Firebase:', e);
-        addCategory(); // Fallback to empty state
-      }
     };
 
-    // Initialize the app
+    window.loadState = async function() {
+        try {
+            const db = getDatabase();
+            // Initial load
+            const snapshot = await get(ref(db, 'tasks'));
+            if (snapshot.exists()) {
+                renderState(snapshot.val());
+            } else {
+                addCategory(); // Initialize with empty category
+            }
+
+            // Listen for real-time updates
+            onValue(ref(db, 'tasks'), (snapshot) => {
+                if (snapshot.exists()) {
+                    renderState(snapshot.val());
+                }
+            });
+        } catch (e) {
+            console.error('Failed to load from Firebase:', e);
+            // Fallback to localStorage
+            const savedState = localStorage.getItem('taskState');
+            if (savedState) {
+                renderState(JSON.parse(savedState));
+            } else {
+                addCategory();
+            }
+        }
+    };
+
+    // Initialize Firebase when the module loads
+    try {
+        const response = await fetch('firebase-config.js');
+        const configModule = await import(URL.createObjectURL(new Blob([await response.text()], {type: 'text/javascript'})));
+        const app = initializeApp(configModule.default);
+        const analytics = getAnalytics(app);
+        console.log('Firebase initialized successfully');
+    } catch (e) {
+        console.error('Failed to initialize Firebase:', e);
+    }
+
+    // Initialize the app when the DOM is ready
     window.addEventListener('DOMContentLoaded', () => {
-      loadState();
+        loadState();
     });
   </script>
 
