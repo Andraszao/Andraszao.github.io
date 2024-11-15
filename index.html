@@ -602,7 +602,8 @@
         
         try {
             if (window.db) {
-                await set(ref(window.db, 'tasks'), state);
+                const taskId = 'default-task-list';
+                await set(ref(window.db, `tasks/${taskId}`), state);
                 console.log('Saved to Firebase');
             } else {
                 throw new Error('Firebase not initialized');
@@ -640,7 +641,8 @@
             console.log('Firebase initialized successfully');
             
             // Set up realtime listener
-            const tasksRef = ref(window.db, 'tasks');
+            const taskId = 'default-task-list';
+            const tasksRef = ref(window.db, `tasks/${taskId}`);
             onValue(tasksRef, (snapshot) => {
                 const data = snapshot.val();
                 if (data) {
