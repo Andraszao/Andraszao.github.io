@@ -766,7 +766,7 @@
   </div>
 
   <script>
-    // Add this at the start of your main script, before any other code
+    // Add these utility functions at the very start of the first script tag
     function debounce(func, wait) {
       let timeout;
       return function executedFunction(...args) {
@@ -779,54 +779,11 @@
       };
     }
 
-    // Declare markLocalUpdate in global scope
+    // Define markLocalUpdate in global scope
     window.markLocalUpdate = function() {
       window.lastLocalUpdate = Date.now();
     };
-  </script>
 
-  <script type="module">
-    // Remove the debounce function from here since it's now in global scope
-    
-    // Firebase initialization
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
-
-    async function init() {
-      try {
-        if (!window.FIREBASE_CONFIG) {
-          console.error('Firebase config is missing');
-          updateSyncStatus('Local Mode (No Firebase Config) 💾');
-          throw new Error('Firebase config not found');
-        }
-        
-        const config = JSON.parse(window.FIREBASE_CONFIG);
-        const app = initializeApp(config);
-        window.db = getDatabase(app);
-        const analytics = getAnalytics(app);
-        
-        updateSyncStatus('Connected to Cloud ☁️');
-        
-        // Add a flag to prevent recursive updates
-        let isUpdating = false;
-        
-        // Add timestamp to track local changes
-        window.lastLocalUpdate = Date.now();
-        
-        // Remove markLocalUpdate definition from here since it's now in global scope
-        
-        // ... rest of the init function remains the same ...
-      } catch (e) {
-        // ... existing catch block ...
-      }
-    }
-
-    // Initialize when DOM is ready
-    window.addEventListener('DOMContentLoaded', init);
-  </script>
-
-  <script>
     let editMode = false;
     let activeAssignButton = null;
 
@@ -1315,6 +1272,47 @@
         });
       }
     }
+  </script>
+
+  <script type="module">
+    // Remove the debounce function from here since it's now in global scope
+    
+    // Firebase initialization
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
+
+    async function init() {
+      try {
+        if (!window.FIREBASE_CONFIG) {
+          console.error('Firebase config is missing');
+          updateSyncStatus('Local Mode (No Firebase Config) 💾');
+          throw new Error('Firebase config not found');
+        }
+        
+        const config = JSON.parse(window.FIREBASE_CONFIG);
+        const app = initializeApp(config);
+        window.db = getDatabase(app);
+        const analytics = getAnalytics(app);
+        
+        updateSyncStatus('Connected to Cloud ☁️');
+        
+        // Add a flag to prevent recursive updates
+        let isUpdating = false;
+        
+        // Add timestamp to track local changes
+        window.lastLocalUpdate = Date.now();
+        
+        // Remove markLocalUpdate definition from here since it's now in global scope
+        
+        // ... rest of the init function remains the same ...
+      } catch (e) {
+        // ... existing catch block ...
+      }
+    }
+
+    // Initialize when DOM is ready
+    window.addEventListener('DOMContentLoaded', init);
   </script>
 </body>
 </html>
