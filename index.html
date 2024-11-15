@@ -765,118 +765,140 @@
     <input type="text" placeholder="Enter assignee name" onkeydown="handleAssigneeInput(event)">
   </div>
 
-  <script>
-    // Define global functions first
-    function debounce(func, wait) {
-      let timeout;
-      return function executedFunction(...args) {
-        const later = () => {
-          clearTimeout(timeout);
-          func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-      };
-    }
-
-    // Placeholder for Firebase functions - will be properly initialized in module
-    window.saveToFirebase = async function(changeType) {
-      if (window.isProcessingRemoteUpdate) return;
-      
-      const state = taskManager.getState();
-      const timestamp = new Date().toISOString();
-      window.lastLocalUpdate = timestamp;
-      
-      try {
-        if (window.db && window.firebaseRef && window.firebaseSet) {
-          const taskId = 'default-task-list';
-          await window.firebaseSet(window.firebaseRef(window.db, `tasks/${taskId}`), {
-            ...state,
-            lastModified: timestamp,
-            changeType
-          });
-          console.log(`Saved to Firebase: ${changeType}`);
-          updateSyncStatus('Synced ☁️');
-        } else {
-          throw new Error('Firebase not initialized');
-        }
-      } catch (e) {
-        console.error('Failed to save to Firebase:', e);
-        localStorage.setItem('taskState', JSON.stringify(state));
-        updateSyncStatus('Saved Locally 💾');
-      }
-    };
-
-    // Define saveState to use saveToFirebase
-    window.saveState = function() {
-      if (window.isProcessingRemoteUpdate) return;
-      window.saveToFirebase('manual-save');
-    };
-  </script>
-
   <script type="module">
-    // Firebase initialization - config should be injected during deployment
+    // Firebase initialization
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
     import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
 
-    // Expose Firebase functions globally
-    window.firebaseRef = ref;
-    window.firebaseSet = set;
+    // Define the functions first
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    async function saveState() {
+        markLocalUpdate(); // Mark this as a local update
+        
+        const state = {
+            version: '1.0',
+            lastModified: new Date().toISOString(),
+            projectName: document.querySelector('.project-name').textContent,
+            categories: Array.from(document.querySelectorAll('.task-group')).map(category => ({
+                id: category.dataset.id || crypto.randomUUID(),
+                name: category.querySelector('.category-name').textContent,
+                isExpanded: category.querySelector('.task-list').style.display !== 'none',
+                tasks: Array.from(category.querySelectorAll('.task-item')).map(task => ({
+                    id: task.dataset.id || crypto.randomUUID(),
+                    title: task.querySelector('.task-title').textContent,
+                    completed: task.querySelector('.task-status').classList.contains('completed'),
+                    assignee: task.querySelector('.task-assign').textContent,
+                    createdAt: task.dataset.createdAt || new Date().toISOString()
+                }))
+            }))
+        };
+        
+        try {
+            if (window.db) {
+                const taskId = 'default-task-list';
+                await set(ref(window.db, `tasks/${taskId}`), state);
+                console.log('Saved to Firebase');
+                updateSyncStatus('Synced to Cloud ☁️');
+            }
+        } catch (e) {
+            console.error('Failed to save to Firebase:', e);
+            localStorage.setItem('taskState', JSON.stringify(state));
+            updateSyncStatus('Saved Locally 💾');
+        }
+    }
+
+    // Add this new function
+    function updateSyncStatus(message) {
+        const statusEl = document.getElementById('sync-status');
+        statusEl.textContent = message;
+        // Fade out after 2 seconds
+        setTimeout(() => {
+            statusEl.style.opacity = '0.5';
+        }, 2000);
+    }
+
+    // Expose functions to global scope
+    window.saveState = saveState;
+    window.debouncedSave = debounce(saveState, 5000);
 
     // Initialize Firebase and load state
     async function init() {
-      try {
-        const config = JSON.parse(window.FIREBASE_CONFIG);
-        const app = initializeApp(config);
-        window.db = getDatabase(app);
-        const analytics = getAnalytics(app);
-        
-        updateSyncStatus('Connected to Cloud ☁️');
-        
-        const taskId = 'default-task-list';
-        const tasksRef = ref(window.db, `tasks/${taskId}`);
-        
-        // First, try to get initial data
-        const snapshot = await get(tasksRef);
-        if (snapshot.exists()) {
-          console.log('Initial data loaded from Firebase');
-          const data = snapshot.val();
-          taskManager.dispatch({ type: 'LOAD_STATE', payload: data });
-        } else {
-          console.log('No existing data in Firebase, loading default state');
-          const savedState = localStorage.getItem('taskState');
-          if (savedState) {
-            const state = JSON.parse(savedState);
-            taskManager.dispatch({ type: 'LOAD_STATE', payload: state });
-          }
-        }
+        try {
+            if (!window.FIREBASE_CONFIG) {
+                console.error('Firebase config is missing');
+                updateSyncStatus('Local Mode (No Firebase Config) 💾');
+                throw new Error('Firebase config not found');
+            }
+            
+            const config = JSON.parse(window.FIREBASE_CONFIG);
+            const app = initializeApp(config);
+            window.db = getDatabase(app);
+            const analytics = getAnalytics(app);
+            
+            updateSyncStatus('Connected to Cloud ☁️');
+            
+            // Add a flag to prevent recursive updates
+            let isUpdating = false;
+            
+            const taskId = 'default-task-list';
+            const tasksRef = ref(window.db, `tasks/${taskId}`);
+            
+            // First, try to get initial data
+            const snapshot = await get(tasksRef);
+            if (snapshot.exists()) {
+                console.log('Initial data loaded from Firebase');
+                renderState(snapshot.val());
+            } else {
+                console.log('No existing data in Firebase, loading default state');
+                const savedState = localStorage.getItem('taskState');
+                if (savedState) {
+                    const state = JSON.parse(savedState);
+                    renderState(state);
+                    await set(tasksRef, state);
+                }
+            }
 
-        // Set up Firebase listener
-        onValue(tasksRef, (snapshot) => {
-          const data = snapshot.val();
-          if (!data) return;
-          
-          if (data.lastModified === window.lastLocalUpdate) {
-            console.log('Skipping own update');
-            return;
-          }
-          
-          window.isProcessingRemoteUpdate = true;
-          console.log('Processing remote update:', data.changeType);
-          taskManager.dispatch({ type: 'LOAD_STATE', payload: data });
-          window.isProcessingRemoteUpdate = false;
-        });
+            // Add a timestamp to track local changes
+            let lastLocalUpdate = Date.now();
 
-      } catch (e) {
-        console.error('Firebase initialization failed:', e);
-        updateSyncStatus('Local Mode (Firebase Error) 💾');
-        const savedState = localStorage.getItem('taskState');
-        if (savedState) {
-          const state = JSON.parse(savedState);
-          taskManager.dispatch({ type: 'LOAD_STATE', payload: state });
+            // Modified realtime listener with update prevention
+            onValue(tasksRef, (snapshot) => {
+                const data = snapshot.val();
+                if (!data) return;
+                
+                // Only update if the change came from another client
+                // and it's been at least 6 seconds since our last local update
+                if (Date.now() - lastLocalUpdate > 6000) {
+                    console.log('Remote update received');
+                    renderState(data);
+                }
+            });
+
+            // Update timestamp when we make local changes
+            function markLocalUpdate() {
+                lastLocalUpdate = Date.now();
+            }
+
+        } catch (e) {
+            console.error('Firebase initialization failed:', e);
+            updateSyncStatus('Local Mode (Firebase Error) 💾');
+            const savedState = localStorage.getItem('taskState');
+            if (savedState) {
+                renderState(JSON.parse(savedState));
+            }
         }
-      }
     }
 
     // Initialize when DOM is ready
@@ -888,9 +910,7 @@
     let activeAssignButton = null;
 
     function toggleEditMode() {
-      taskManager.dispatch({ type: 'TOGGLE_EDIT_MODE' });
-      const editMode = taskManager.getState().editMode;
-      
+      editMode = !editMode;
       document.querySelector('[onclick="toggleEditMode()"]').classList.toggle('active');
       
       document.querySelectorAll('.task-title, .category-name, .project-name').forEach(elem => {
@@ -911,15 +931,9 @@
     }
 
     function toggleStatus(status) {
-      const taskId = status.closest('.task-item').dataset.id;
-      taskManager.dispatch({
-        type: 'UPDATE_TASK',
-        payload: {
-          id: taskId,
-          completed: !status.classList.contains('completed')
-        }
-      });
-      document.dispatchEvent(new Event('taskCompleted'));
+      status.classList.toggle('completed');
+      throttledUpdateStats();
+      document.dispatchEvent(new Event('taskEdited'));
     }
 
     function updateStats() {
@@ -1006,19 +1020,26 @@
         return;
       }
       
-      const taskId = crypto.randomUUID();
-      const categoryId = categoryEl.dataset.id;
+      const taskList = categoryEl.querySelector('.task-list');
+      if (!taskList) {
+        console.error('Task list not found in category');
+        return;
+      }
+
+      const newTask = document.createElement('div');
+      newTask.className = 'task-item';
+      newTask.innerHTML = `
+        <div class="task-status" onclick="toggleStatus(this)"></div>
+        <div class="task-info">
+          <div class="task-title" contenteditable="${editMode}" oninput="updateStats()">New Task</div>
+          <button class="task-assign" onclick="showAssigneePopup(this, event)">Unassigned</button>
+        </div>
+        <span class="delete-button" onclick="deleteTask(this)">×</span>
+      `;
       
-      taskManager.dispatch({
-        type: 'ADD_TASK',
-        payload: {
-          id: taskId,
-          categoryId: categoryId,
-          title: 'New Task',
-          completed: false,
-          assignee: 'Unassigned'
-        }
-      });
+      taskList.appendChild(newTask);
+      updateStats();
+      document.dispatchEvent(new Event('taskAdded'));
     }
 
     function addCategory() {
@@ -1149,15 +1170,10 @@
     }
 
     function renderState(state) {
-      // Skip if state hasn't changed
-      const currentState = JSON.stringify({
-        projectName: state.projectName,
-        categories: Array.from(state.categories.values()),
-        tasks: Array.from(state.tasks.values())
-      });
-      
+      // Skip rendering if state hasn't changed
+      const currentState = JSON.stringify(state);
       if (window.lastRenderedState === currentState) {
-        return;
+          return;
       }
       window.lastRenderedState = currentState;
 
@@ -1242,32 +1258,23 @@
       });
     }
 
-    // Create a batched save function with a longer delay
-    window.debouncedSave = debounce(() => {
-        // Only save if there have been no updates in the last second
-        if (Date.now() - lastUpdateTime > 1000) {
-            saveState();
-        }
-    }, 2000);
+    // Create a single debounced save function with a longer delay
+    window.debouncedSave = debounce(saveState, 5000); // 5 second delay
 
-    // Batch multiple changes together
-    let changesPending = false;
-    function batchedSave() {
-        if (!changesPending) {
-            changesPending = true;
-            requestAnimationFrame(() => {
-                window.debouncedSave();
-                changesPending = false;
-            });
+    // Only trigger saves on actual data changes
+    document.addEventListener('taskAdded', () => window.debouncedSave());
+    document.addEventListener('taskDeleted', () => window.debouncedSave());
+    document.addEventListener('categoryAdded', () => window.debouncedSave());
+    document.addEventListener('categoryDeleted', () => window.debouncedSave());
+
+    // For content edits, we'll use a separate handler
+    function handleContentEdit(event) {
+        const content = event.target.textContent.trim();
+        if (!content) {
+            event.target.textContent = event.target.classList.contains('task-title') ? 'New Task' : 'New Category';
         }
+        window.debouncedSave();
     }
-
-    // Update event listeners to use batched save
-    document.addEventListener('taskAdded', batchedSave);
-    document.addEventListener('taskDeleted', batchedSave);
-    document.addEventListener('taskEdited', batchedSave);
-    document.addEventListener('categoryAdded', batchedSave);
-    document.addEventListener('categoryDeleted', batchedSave);
 
     function toggleLeaderboard() {
       const overlay = document.getElementById('leaderboard-overlay');
@@ -1335,161 +1342,6 @@
 
     // Throttle the updateStats function
     const throttledUpdateStats = throttle(updateStats, 1000);
-
-    // State Manager Implementation
-    class TaskStateManager {
-      constructor() {
-        this.state = {
-          projectName: 'Wish Upon',
-          categories: new Map(),
-          tasks: new Map(),
-          editMode: false,
-          lastSync: null
-        };
-        
-        this.subscribers = new Set();
-        this.pendingUpdates = new Map();
-        this.updateScheduled = false;
-        this.lastLocalChange = Date.now();
-      }
-
-      subscribe(callback) {
-        this.subscribers.add(callback);
-        return () => this.subscribers.delete(callback);
-      }
-
-      dispatch(action) {
-        const nextState = this.reducer(this.state, action);
-        if (nextState !== this.state) {
-          this.state = nextState;
-          this.notifySubscribers();
-        }
-      }
-
-      notifySubscribers() {
-        if (!this.updateScheduled) {
-          this.updateScheduled = true;
-          requestAnimationFrame(() => {
-            this.subscribers.forEach(callback => callback(this.state));
-            this.updateScheduled = false;
-          });
-        }
-      }
-
-      reducer(state, action) {
-        switch (action.type) {
-          case 'SET_PROJECT_NAME':
-            return { ...state, projectName: action.payload };
-            
-          case 'ADD_CATEGORY':
-            return {
-              ...state,
-              categories: new Map(state.categories).set(action.payload.id, action.payload)
-            };
-            
-          case 'ADD_TASK':
-            return {
-              ...state,
-              tasks: new Map(state.tasks).set(action.payload.id, {
-                ...action.payload,
-                createdAt: Date.now(),
-                version: 1
-              })
-            };
-            
-          case 'UPDATE_TASK':
-            const task = state.tasks.get(action.payload.id);
-            if (!task) return state;
-            
-            return {
-              ...state,
-              tasks: new Map(state.tasks).set(action.payload.id, {
-                ...task,
-                ...action.payload,
-                version: task.version + 1
-              })
-            };
-            
-          case 'DELETE_TASK':
-            const newTasks = new Map(state.tasks);
-            newTasks.delete(action.payload.id);
-            return { ...state, tasks: newTasks };
-            
-          case 'DELETE_CATEGORY':
-            const newCategories = new Map(state.categories);
-            newCategories.delete(action.payload.id);
-            return { ...state, categories: newCategories };
-            
-          case 'TOGGLE_EDIT_MODE':
-            return { ...state, editMode: !state.editMode };
-            
-          case 'LOAD_STATE':
-            return {
-              ...state,
-              projectName: action.payload.projectName || state.projectName,
-              categories: new Map(action.payload.categories.map(cat => [cat.id, cat])),
-              tasks: new Map(action.payload.categories
-                .flatMap(cat => cat.tasks)
-                .filter(Boolean)
-                .map(task => [task.id, task]))
-            };
-            
-          case 'SYNC_STATE':
-            return {
-              ...state,
-              lastSync: action.payload.timestamp,
-              categories: new Map([...state.categories].map(([id, cat]) => [
-                id,
-                { ...cat, syncedVersion: cat.version }
-              ])),
-              tasks: new Map([...state.tasks].map(([id, task]) => [
-                id,
-                { ...task, syncedVersion: task.version }
-              ]))
-            };
-            
-          default:
-            return state;
-        }
-      }
-
-      getState() {
-        return this.state;
-      }
-    }
-
-    // Initialize state manager
-    window.taskManager = new TaskStateManager();
-
-    taskManager.subscribe(state => {
-      renderState(state);
-    });
-
-    // Replace scattered event listeners with centralized handlers
-    function setupEventHandlers() {
-      const debouncedSync = debounce((changeType) => {
-        if (!window.isProcessingRemoteUpdate) {
-          saveToFirebase(changeType);
-        }
-      }, 2000);
-
-      taskManager.subscribe((state) => {
-        // Trigger sync on state changes
-        debouncedSync('state-update');
-        
-        // Update UI elements that depend on state
-        updateStats();
-        updateAssigneeFilters();
-        
-        // Update leaderboard if visible
-        if (document.getElementById('leaderboard-overlay').style.display === 'block') {
-          updateLeaderboard();
-        }
-      });
-    }
-
-    // Call this after initializing the state manager
-    setupEventHandlers();
   </script>
 </body>
 </html>
