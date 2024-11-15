@@ -1123,10 +1123,14 @@
       newTask.dataset.id = taskId;
       newTask.dataset.createdAt = createdAt;
       newTask.draggable = true;
+      
       newTask.innerHTML = `
         <div class="task-status" onclick="toggleStatus(this)"></div>
         <div class="task-info">
-          <div class="task-title" contenteditable="${editMode}" oninput="updateStats()">New Task</div>
+          <div class="task-title" contenteditable="${editMode}">New Task</div>
+          <div class="task-tags">
+            ${editMode ? '<button class="add-tag-btn" onclick="showTagInput(this)">+</button>' : ''}
+          </div>
           <button class="task-assign" onclick="showAssigneePopup(this, event)">Unassigned</button>
         </div>
         <span class="delete-button" onclick="deleteTask(this)">×</span>
@@ -1352,7 +1356,7 @@
                 <span class="category-label" 
                       contenteditable="${editMode}" 
                       onclick="event.stopPropagation()"
-                      onblur="handleCategoryLabelChange(this)">Category</span>:
+                      onblur="handleCategoryLabelChange(this)">${category.label || 'Category'}</span>:
                 <span class="category-name" contenteditable="${editMode}">${category.name || 'New Category'}</span>
               </div>
               <div style="display: flex; align-items: center; gap: 1rem;">
@@ -1450,38 +1454,29 @@
         const state = {
           projectName: document.querySelector('.project-name').textContent || 'Wish Upon',
           categories: Array.from(document.querySelectorAll('.task-group')).map(group => {
-            // Validate category data
             const categoryData = {
               id: group.dataset.id,
               name: group.querySelector('.category-name')?.textContent,
+              label: group.querySelector('.category-label')?.textContent || 'Category',
               isExpanded: group.querySelector('.task-list')?.style.display !== 'none',
-              tasks: []
+              tasks: Array.from(group.querySelectorAll('.task-item')).map(task => ({
+                id: task.dataset.id,
+                title: task.querySelector('.task-title')?.textContent || 'New Task',
+                completed: task.querySelector('.task-status')?.classList.contains('completed') || false,
+                assignee: task.querySelector('.task-assign')?.textContent || 'Unassigned',
+                createdAt: task.dataset.createdAt || new Date().toISOString(),
+                tags: Array.from(task.querySelectorAll('.task-tag'))
+                  .map(tag => tag.dataset.tag)
+              }))
             };
-
-            // Validate each task
-            const tasks = Array.from(group.querySelectorAll('.task-item')).map(task => ({
-              id: task.dataset.id,
-              title: task.querySelector('.task-title')?.textContent || 'New Task',
-              completed: task.querySelector('.task-status')?.classList.contains('completed') || false,
-              assignee: task.querySelector('.task-assign')?.textContent || 'Unassigned',
-              createdAt: task.dataset.createdAt || new Date().toISOString(),
-              tags: Array.from(task.querySelectorAll('.task-tag'))
-                .map(tag => tag.dataset.tag),
-              categoryLabel: group.querySelector('.category-label').textContent
-            }))
-
-            categoryData.tasks = tasks;
             return categoryData;
           }).filter(category => category.id && category.name)
         };
 
-        // Mark that we're making a local update
+        // Mark local update and save
         window.markLocalUpdate();
-
-        // Save to localStorage as backup
         localStorage.setItem('taskState', JSON.stringify(state));
 
-        // If Firebase is initialized, save to Firebase
         if (window.db && window.firebaseRef && window.firebaseSet) {
           const taskId = 'default-task-list';
           const tasksRef = window.firebaseRef(window.db, `tasks/${taskId}`);
