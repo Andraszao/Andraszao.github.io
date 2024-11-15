@@ -563,24 +563,24 @@
   </div>
 
   <script type="module">
-    import firebaseConfig from './firebase-config.js';
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
     import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-database.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-analytics.js";
+    import firebaseConfig from './firebase-config.js';
 
     // Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const analytics = getAnalytics(app);
     const db = getDatabase(app);
 
-    // Make db available globally
+    // Make Firebase functions available globally
     window.db = db;
     window.dbRef = ref;
     window.dbSet = set;
     window.dbGet = get;
     window.dbOnValue = onValue;
 
-    // Update saveState function
+    // Update saveState to use Firebase
     window.saveState = async function() {
       const state = {
         version: '1.0',
@@ -600,29 +600,340 @@
         }))
       };
       
-      await dbSet(ref(db, 'tasks'), state);
+      try {
+        await set(ref(db, 'tasks'), state);
+        console.log('Saved to Firebase');
+      } catch (e) {
+        console.error('Failed to save to Firebase:', e);
+      }
     };
 
-    // Update loadState function
+    // Update loadState to use Firebase
     window.loadState = async function() {
-      // Initial load
-      const snapshot = await dbGet(ref(db, 'tasks'));
-      if (snapshot.exists()) {
-        renderState(snapshot.val());
-      } else {
-        addCategory(); // Initialize with empty category
-      }
-
-      // Listen for real-time updates
-      onValue(ref(db, 'tasks'), (snapshot) => {
+      try {
+        // Initial load
+        const snapshot = await get(ref(db, 'tasks'));
         if (snapshot.exists()) {
           renderState(snapshot.val());
+        } else {
+          addCategory(); // Initialize with empty category
         }
-      });
+
+        // Listen for real-time updates
+        onValue(ref(db, 'tasks'), (snapshot) => {
+          if (snapshot.exists()) {
+            renderState(snapshot.val());
+          }
+        });
+      } catch (e) {
+        console.error('Failed to load from Firebase:', e);
+        addCategory(); // Fallback to empty state
+      }
     };
 
-    // Initialize the app when the module loads
-    loadState();
+    // Initialize the app
+    window.addEventListener('DOMContentLoaded', () => {
+      loadState();
+    });
+  </script>
+
+  <script>
+    let editMode = false;
+    let activeAssignButton = null;
+
+    function toggleEditMode() {
+      editMode = !editMode;
+      document.querySelector('[onclick="toggleEditMode()"]').classList.toggle('active');
+      
+      document.querySelectorAll('.task-title, .category-name, .project-name').forEach(elem => {
+        elem.contentEditable = editMode;
+        if (editMode) {
+          elem.addEventListener('blur', handleContentEdit);
+          elem.addEventListener('keydown', handleEnterKey);
+        } else {
+          elem.removeEventListener('blur', handleContentEdit);
+          elem.removeEventListener('keydown', handleEnterKey);
+        }
+      });
+    }
+
+    function toggleGroup(header) {
+      const list = header.nextElementSibling;
+      list.style.display = list.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function toggleStatus(status) {
+      status.classList.toggle('completed');
+      updateStats();
+    }
+
+    function updateStats() {
+      const completed = document.querySelectorAll('.task-status.completed').length;
+      const total = document.querySelectorAll('.task-status').length;
+      document.getElementById('completed-count').textContent = completed;
+      document.getElementById('total-count').textContent = total;
+      
+      document.querySelectorAll('.task-count').forEach(count => {
+        const group = count.closest('.task-group');
+        const groupCompleted = group.querySelectorAll('.task-status.completed').length;
+        const groupTotal = group.querySelectorAll('.task-status').length;
+        count.textContent = `${groupCompleted}/${groupTotal}`;
+      });
+
+      saveState();
+    }
+
+    function showAssigneePopup(button, event) {
+      event.stopPropagation();
+      const popup = document.querySelector('.assignee-popup');
+      const input = popup.querySelector('input');
+      
+      popup.style.display = 'block';
+      popup.style.top = `${event.pageY}px`;
+      popup.style.left = `${event.pageX}px`;
+      
+      activeAssignButton = button;
+      input.value = button.textContent === 'Unassigned' ? '' : button.textContent;
+      input.focus();
+    }
+
+    function handleAssigneeInput(event) {
+      if (event.key === 'Enter') {
+        const value = event.target.value.trim();
+        if (activeAssignButton && value) {
+          activeAssignButton.textContent = value;
+          activeAssignButton.classList.add('assigned');
+        } else if (activeAssignButton) {
+          activeAssignButton.textContent = 'Unassigned';
+          activeAssignButton.classList.remove('assigned');
+        }
+        document.querySelector('.assignee-popup').style.display = 'none';
+        activeAssignButton = null;
+        saveState();
+        updateAssigneeFilters();
+      }
+    }
+
+    function addTask(categoryEl) {
+      if (!categoryEl) {
+        alert('Please select a category first');
+        return;
+      }
+      
+      const taskList = categoryEl.querySelector('.task-list');
+      if (!taskList) {
+        console.error('Task list not found in category');
+        return;
+      }
+
+      const newTask = document.createElement('div');
+      newTask.className = 'task-item';
+      newTask.innerHTML = `
+        <div class="task-status" onclick="toggleStatus(this)"></div>
+        <div class="task-info">
+          <div class="task-title" contenteditable="${editMode}" oninput="updateStats()">New Task</div>
+          <button class="task-assign" onclick="showAssigneePopup(this, event)">Unassigned</button>
+        </div>
+        <span class="delete-button" onclick="deleteTask(this)">×</span>
+      `;
+      
+      taskList.appendChild(newTask);
+      updateStats();
+    }
+
+    function addCategory() {
+      const container = document.getElementById('task-container');
+      const category = document.createElement('div');
+      category.className = 'task-group';
+      category.innerHTML = `
+        <div class="task-group-header">
+          <div>
+            <span>Category: </span>
+            <span class="category-name" contenteditable="${editMode}" oninput="updateStats()">New Category</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <button class="add-task-btn" onclick="event.stopPropagation(); addTask(this.closest('.task-group'))">
+              + Add Task
+            </button>
+            <span class="task-count">0/0</span>
+            <span class="delete-button" onclick="deleteCategory(event, this)">×</span>
+          </div>
+        </div>
+        <div class="task-list"></div>
+      `;
+      container.appendChild(category);
+    }
+
+    function deleteTask(button) {
+      button.closest('.task-item').remove();
+      updateStats();
+    }
+
+    function deleteCategory(event, button) {
+      event.stopPropagation();
+      if (confirm('Delete this category and all its tasks?')) {
+        button.closest('.task-group').remove();
+        updateStats();
+      }
+    }
+
+    // Close assignee popup when clicking outside
+    document.addEventListener('click', (event) => {
+      const popup = document.querySelector('.assignee-popup');
+      if (!popup.contains(event.target) && !event.target.classList.contains('task-assign')) {
+        popup.style.display = 'none';
+        activeAssignButton = null;
+      }
+    });
+
+    function debounce(func, wait) {
+      let timeout;
+      return function executedFunction(...args) {
+        const later = () => {
+          clearTimeout(timeout);
+          func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+      };
+    }
+
+    const debouncedSave = debounce(saveState, 1000);
+
+    function handleTaskEdit() {
+      debouncedSave();
+    }
+
+    // Add offline detection
+    window.addEventListener('online', function() {
+      document.body.classList.remove('offline');
+    });
+
+    window.addEventListener('offline', function() {
+      document.body.classList.add('offline');
+      alert('You are offline. Changes will be saved locally.');
+    });
+
+    function handleProjectNameChange(event) {
+      const projectName = event.target.textContent.trim();
+      if (!projectName) {
+        event.target.textContent = event.target.dataset.default;
+      }
+      document.title = `${projectName} - Development Constellation Map`;
+      saveState();
+    }
+
+    function handleContentEdit(event) {
+      const content = event.target.textContent.trim();
+      if (!content) {
+        event.target.textContent = event.target.classList.contains('task-title') ? 'New Task' : 'New Category';
+      }
+      saveState();
+    }
+
+    function handleEnterKey(event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        event.target.blur();
+      }
+    }
+
+    function updateAssigneeFilters() {
+      const assignees = new Set(['all']);
+      
+      document.querySelectorAll('.task-assign').forEach(assign => {
+        const assignee = assign.textContent.trim();
+        if (assignee !== 'Unassigned') {
+          assignees.add(assignee);
+        }
+      });
+
+      const filterContainer = document.getElementById('assignee-filters');
+      filterContainer.innerHTML = '';
+      
+      assignees.forEach(assignee => {
+        const button = document.createElement('button');
+        button.className = 'assignee-filter' + (assignee === 'all' ? ' active' : '');
+        button.setAttribute('data-assignee', assignee);
+        button.textContent = assignee === 'all' ? 'All' : assignee;
+        button.onclick = () => filterTasks(assignee);
+        filterContainer.appendChild(button);
+      });
+    }
+
+    function filterTasks(assignee) {
+      document.querySelectorAll('.assignee-filter').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.assignee === assignee);
+      });
+
+      document.querySelectorAll('.task-item').forEach(task => {
+        const taskAssignee = task.querySelector('.task-assign').textContent.trim();
+        const shouldShow = assignee === 'all' || taskAssignee === assignee;
+        task.style.display = shouldShow ? '' : 'none';
+      });
+
+      document.querySelectorAll('.task-group').forEach(group => {
+        const hasVisibleTasks = Array.from(group.querySelectorAll('.task-item'))
+          .some(task => task.style.display !== 'none');
+        group.style.display = hasVisibleTasks ? '' : 'none';
+      });
+    }
+
+    function renderState(state) {
+      // Update project name
+      const projectNameEl = document.querySelector('.project-name');
+      projectNameEl.textContent = state.projectName || projectNameEl.dataset.default;
+      
+      // Clear existing tasks
+      document.getElementById('task-container').innerHTML = '';
+      
+      // Render categories and tasks
+      state.categories.forEach(category => {
+        const categoryEl = document.createElement('div');
+        categoryEl.className = 'task-group';
+        categoryEl.dataset.id = category.id;
+        
+        categoryEl.innerHTML = `
+          <div class="task-group-header" onclick="toggleGroup(this)">
+            <div>
+              <span>Category: </span>
+              <span class="category-name" contenteditable="${editMode}">${category.name}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 1rem;">
+              <button class="add-task-btn" onclick="event.stopPropagation(); addTask(this.closest('.task-group'))">
+                + Add Task
+              </button>
+              <span class="task-count">0/0</span>
+              <span class="delete-button" onclick="deleteCategory(event, this)">×</span>
+            </div>
+          </div>
+          <div class="task-list" style="display: ${category.isExpanded ? 'block' : 'none'}"></div>
+        `;
+        
+        document.getElementById('task-container').appendChild(categoryEl);
+        
+        // Render tasks
+        const taskList = categoryEl.querySelector('.task-list');
+        category.tasks.forEach(task => {
+          const taskEl = document.createElement('div');
+          taskEl.className = 'task-item';
+          taskEl.dataset.id = task.id;
+          taskEl.dataset.createdAt = task.createdAt;
+          
+          taskEl.innerHTML = `
+            <div class="task-status ${task.completed ? 'completed' : ''}" onclick="toggleStatus(this)"></div>
+            <div class="task-info">
+              <div class="task-title" contenteditable="${editMode}">${task.title}</div>
+              <button class="task-assign ${task.assignee !== 'Unassigned' ? 'assigned' : ''}" 
+                      onclick="showAssigneePopup(this, event)">${task.assignee}</button>
+            </div>
+            <span class="delete-button" onclick="deleteTask(this)">×</span>
+          `;
+          
+          taskList.appendChild(taskEl);
+        });
+      });
+    }
   </script>
 </body>
 </html>
