@@ -4,7 +4,9 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
-  base: '/constellation-tasks/',
+  base: '/',  // If using username.github.io repository
+  // OR
+  // base: '/repository-name/',  // If using any other repository name
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
