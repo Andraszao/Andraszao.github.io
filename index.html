@@ -723,6 +723,30 @@
         margin-bottom: 0.5rem;
         color: #94a3b8;
     }
+
+    /* Improve focus states for interactive elements */
+    .task-title:focus,
+    .category-name:focus,
+    .project-name:focus {
+        background: #2d3748;
+        color: #a78bfa;
+        outline: 2px solid #a78bfa;
+        outline-offset: 2px;
+    }
+
+    .toolbar button:focus-visible,
+    .add-task-btn:focus-visible,
+    .task-assign:focus-visible {
+        outline: 2px solid #a78bfa;
+        outline-offset: 2px;
+        border-color: #a78bfa;
+    }
+
+    /* Add keyboard focus styles */
+    .task-item:focus-within {
+        outline: 2px solid #a78bfa;
+        outline-offset: 2px;
+    }
   </style>
 </head>
 <body>
