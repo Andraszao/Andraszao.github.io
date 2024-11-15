@@ -67,12 +67,10 @@ const ThemeProvider = ({ children }) => {
 
 // Simple Button component
 const Button = ({ children, variant = 'default', size = 'default', className = '', ...props }) => {
-  const baseStyles = 'inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50';
-  
   const variants = {
-    default: 'bg-primary text-primary-foreground shadow hover:bg-primary/90 dark:bg-primary-dark',
-    outline: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground dark:border-gray-700',
-    ghost: 'hover:bg-accent hover:text-accent-foreground dark:hover:bg-gray-700'
+    default: 'bg-primary text-white shadow hover:bg-primary/90 dark:bg-blue-500 dark:hover:bg-blue-600',
+    outline: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground dark:border-gray-600 dark:hover:bg-gray-700',
+    ghost: 'hover:bg-accent hover:text-accent-foreground dark:hover:bg-gray-700 dark:text-gray-200'
   };
 
   const sizes = {
@@ -84,10 +82,16 @@ const Button = ({ children, variant = 'default', size = 'default', className = '
   return (
     <button
       className={`
-        ${baseStyles}
+        inline-flex items-center justify-center rounded-md text-sm font-medium
+        transition-colors focus-visible:outline-none focus-visible:ring-1
+        focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50
+        ${variants[variant]}
+        ${sizes[size]}
         active:scale-95 
         transition-all duration-150
         hover:ring-2 hover:ring-offset-2
+        dark:hover:ring-offset-gray-900
+        ${className}
       `}
       {...props}
     >
@@ -121,7 +125,7 @@ const Card = ({ children, className = '', ...props }) => {
   return (
     <div
       className={`
-        rounded-xl border border-gray-200 dark:border-gray-800
+        rounded-xl border border-gray-200 dark:border-gray-700
         bg-white dark:bg-gray-800
         text-gray-900 dark:text-gray-100
         shadow-sm hover:shadow-md
