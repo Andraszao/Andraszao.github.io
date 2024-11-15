@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   DndContext, 
   closestCenter, 
@@ -124,9 +124,11 @@ const SortableTask = ({ task, projectId, onToggle, onEdit, onAddSubtask, onAddTa
           className="w-4 h-4"
         />
         <div className="flex-1 flex items-center gap-2">
-          <span className={task.completed ? 'line-through text-gray-400' : ''}>
-            {task.text}
-          </span>
+          <EditableText
+            value={task.text}
+            onChange={(newName) => onEdit(task.id, newName)}
+            className={task.completed ? 'line-through text-gray-400' : ''}
+          />
           {task.tags?.map(tag => (
             <Badge key={tag} variant="secondary">
               {tag}
@@ -177,9 +179,11 @@ const SortableTask = ({ task, projectId, onToggle, onEdit, onAddSubtask, onAddTa
                 className="w-4 h-4"
               />
               <div className="flex-1 flex items-center gap-2">
-                <span className={subtask.completed ? 'line-through text-gray-400' : ''}>
-                  {subtask.text}
-                </span>
+                <EditableText
+                  value={subtask.text}
+                  onChange={(newName) => onEdit(task.id, subtask.id, newName)}
+                  className={subtask.completed ? 'line-through text-gray-400' : ''}
+                />
                 {subtask.tags?.map(tag => (
                   <Badge key={tag} variant="secondary">
                     {tag}
@@ -214,6 +218,57 @@ const SortableTask = ({ task, projectId, onToggle, onEdit, onAddSubtask, onAddTa
           ))}
         </div>
       )}
+    </div>
+  );
+};
+
+const EditableText = ({ value, onChange, className = '' }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [text, setText] = useState(value);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (isEditing) {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
+  }, [isEditing]);
+
+  const handleBlur = () => {
+    setIsEditing(false);
+    if (text.trim() !== value) {
+      onChange(text.trim());
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleBlur();
+    } else if (e.key === 'Escape') {
+      setText(value);
+      setIsEditing(false);
+    }
+  };
+
+  if (isEditing) {
+    return (
+      <input
+        ref={inputRef}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
+        className={`bg-transparent border-none focus:outline-none ${className}`}
+      />
+    );
+  }
+
+  return (
+    <div
+      onClick={() => setIsEditing(true)}
+      className={`cursor-pointer hover:opacity-80 ${className}`}
+    >
+      {value}
     </div>
   );
 };
@@ -395,16 +450,58 @@ const App = () => {
   const handleDragEnd = (event) => {
     const { active, over } = event;
     
-    if (active.id !== over?.id) {
-      setProjects(prev => prev.map(project => ({
+    if (!over || active.id === over.id) return;
+
+    setProjects(prev => prev.map(project => {
+      const taskIndex = project.tasks.findIndex(t => t.id === active.id);
+      if (taskIndex === -1) return project;
+
+      const overIndex = project.tasks.findIndex(t => t.id === over.id);
+      if (overIndex === -1) return project;
+
+      const newTasks = [...project.tasks];
+      const [movedTask] = newTasks.splice(taskIndex, 1);
+      newTasks.splice(overIndex, 0, movedTask);
+
+      return {
         ...project,
-        tasks: arrayMove(
-          project.tasks,
-          project.tasks.findIndex(t => t.id === active.id),
-          project.tasks.findIndex(t => t.id === over?.id)
-        )
-      })));
-    }
+        tasks: newTasks
+      };
+    }));
+  };
+
+  const handleProjectNameChange = (projectId, newName) => {
+    setProjects(prev => prev.map(project => 
+      project.id === projectId 
+        ? { ...project, name: newName }
+        : project
+    ));
+  };
+
+  const handleTaskNameChange = (projectId, taskId, newName, subtaskId = null) => {
+    setProjects(prev => prev.map(project => {
+      if (project.id !== projectId) return project;
+      
+      return {
+        ...project,
+        tasks: project.tasks.map(task => {
+          if (task.id !== taskId) return task;
+          
+          if (subtaskId) {
+            return {
+              ...task,
+              subtasks: task.subtasks.map(subtask =>
+                subtask.id === subtaskId
+                  ? { ...subtask, text: newName }
+                  : subtask
+              )
+            };
+          }
+          
+          return { ...task, text: newName };
+        })
+      };
+    }));
   };
 
   return (
@@ -437,7 +534,11 @@ const App = () => {
           <Card key={project.id} className="p-4">
             <div className="mb-4">
               <div className="flex justify-between items-center">
-                <h2 className="text-lg font-medium">{project.name}</h2>
+                <EditableText
+                  value={project.name}
+                  onChange={(newName) => handleProjectNameChange(project.id, newName)}
+                  className="text-lg font-medium"
+                />
                 <Button 
                   variant="outline" 
                   size="sm"
