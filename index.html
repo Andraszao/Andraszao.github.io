@@ -706,6 +706,23 @@
       transform: translateZ(0);
       backface-visibility: hidden;
     }
+
+    /* Empty state indicators */
+    .task-list:empty::before {
+        content: 'No tasks yet. Click "+ Add Task" to get started.';
+        display: block;
+        padding: 1.5rem;
+        text-align: center;
+        color: #94a3b8;
+        font-style: italic;
+    }
+
+    #task-container:empty + .add-category::before {
+        content: '👋 Welcome! Start by adding a category';
+        display: block;
+        margin-bottom: 0.5rem;
+        color: #94a3b8;
+    }
   </style>
 <script>window.FIREBASE_CONFIG = '{"apiKey":"AIzaSyCXE9UyJeSjcFOOoDucZhoaQOvtn1yTHmk","authDomain":"taskmaster-6bfbd.firebaseapp.com","projectId":"taskmaster-6bfbd","storageBucket":"taskmaster-6bfbd.firebasestorage.app","messagingSenderId":"583197012210","appId":"1:583197012210:web:a2db1887d327b4ae4e606b","measurementId":"G-QP2LY3XC9L"}';</script></head>
 <body>
