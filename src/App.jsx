@@ -23,8 +23,16 @@ import {
   Pencil, 
   GripVertical, 
   Tag as TagIcon, 
-  User 
+  User, 
+  Trash, 
+  X 
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 // Simple Button component
 const Button = ({ children, variant = 'default', size = 'default', className = '', ...props }) => {
@@ -93,7 +101,7 @@ const Badge = ({ children, variant = 'default', className = '', ...props }) => {
 };
 
 // Sortable Task Component
-const SortableTask = ({ task, projectId, onToggle, onEdit, onAddSubtask, onAddTag, onAssign }) => {
+const SortableTask = ({ task, projectId, onToggle, onEdit, onAddSubtask, onAddTag, onAssign, onDelete, onRemoveTag, onEditAssignee }) => {
   const {
     attributes,
     listeners,
@@ -239,6 +247,13 @@ const SortableTask = ({ task, projectId, onToggle, onEdit, onAddSubtask, onAddTa
           ))}
         </div>
       )}
+      <TaskActions
+        task={task}
+        onDelete={() => onDelete(task.id)}
+        onEditTag={() => onAddTag(task.id)}
+        onRemoveTag={(tag) => onRemoveTag(task.id, tag)}
+        onEditAssignee={() => onEditAssignee(task.id)}
+      />
     </div>
   );
 };
@@ -525,6 +540,110 @@ const App = () => {
     }));
   };
 
+  const handleDelete = (projectId, taskId) => {
+    setProjects(prev => prev.map(project => {
+      if (project.id === projectId) {
+        return {
+          ...project,
+          tasks: project.tasks.filter(task => task.id !== taskId)
+        };
+      }
+      return project;
+    }));
+  };
+
+  const handleRemoveTag = (projectId, taskId, tag) => {
+    setProjects(prev => prev.map(project => {
+      if (project.id === projectId) {
+        return {
+          ...project,
+          tasks: project.tasks.map(task => {
+            if (task.id === taskId) {
+              return {
+                ...task,
+                tags: task.tags.filter(t => t !== tag)
+              };
+            }
+            return task;
+          })
+        };
+      }
+      return project;
+    }));
+  };
+
+  const handleEditAssignee = (projectId, taskId) => {
+    const assignee = prompt('Assign to:');
+    if (!assignee?.trim()) return;
+
+    setProjects(prev => prev.map(project => {
+      if (project.id === projectId) {
+        return {
+          ...project,
+          tasks: project.tasks.map(task => {
+            if (task.id === taskId) {
+              return { ...task, assignee: assignee.trim() };
+            }
+            return task;
+          })
+        };
+      }
+      return project;
+    }));
+  };
+
+  const handleDeleteProject = (projectId) => {
+    if (!confirm('Are you sure you want to delete this project and all its tasks?')) return;
+    setProjects(prev => prev.filter(p => p.id !== projectId));
+  };
+
+  const handleDeleteTask = (projectId, taskId) => {
+    if (!confirm('Are you sure you want to delete this task?')) return;
+    setProjects(prev => prev.map(project => {
+      if (project.id === projectId) {
+        return {
+          ...project,
+          tasks: project.tasks.filter(t => t.id !== taskId)
+        };
+      }
+      return project;
+    }));
+  };
+
+  const handleRemoveTag = (projectId, taskId, tagToRemove, subtaskId = null) => {
+    setProjects(prev => prev.map(project => {
+      if (project.id === projectId) {
+        return {
+          ...project,
+          tasks: project.tasks.map(task => {
+            if (taskId === task.id && !subtaskId) {
+              return {
+                ...task,
+                tags: task.tags.filter(tag => tag !== tagToRemove)
+              };
+            }
+            if (taskId === task.id && subtaskId) {
+              return {
+                ...task,
+                subtasks: task.subtasks.map(subtask => {
+                  if (subtask.id === subtaskId) {
+                    return {
+                      ...subtask,
+                      tags: subtask.tags.filter(tag => tag !== tagToRemove)
+                    };
+                  }
+                  return subtask;
+                })
+              };
+            }
+            return task;
+          })
+        };
+      }
+      return project;
+    }));
+  };
+
   return (
     <div className="max-w-3xl mx-auto p-4">
       <div className="mb-8 text-center">
@@ -554,20 +673,30 @@ const App = () => {
         {projects.map(project => (
           <Card key={project.id} className="p-4">
             <div className="mb-4">
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center mb-4">
                 <EditableText
                   value={project.name}
                   onChange={(newName) => handleProjectNameChange(project.id, newName)}
                   className="text-lg font-medium"
                 />
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => handleAddTask(project.id)}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Task
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => handleAddTask(project.id)}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Task
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteProject(project.id)}
+                    className="text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -599,6 +728,15 @@ const App = () => {
                     }
                     onAssign={(taskId, subtaskId) => 
                       handleAssign(project.id, taskId, subtaskId)
+                    }
+                    onDelete={(taskId) => 
+                      handleDelete(project.id, taskId)
+                    }
+                    onRemoveTag={(tag) => 
+                      handleRemoveTag(project.id, taskId, tag)
+                    }
+                    onEditAssignee={(taskId) => 
+                      handleEditAssignee(project.id, taskId)
                     }
                   />
                 ))}
