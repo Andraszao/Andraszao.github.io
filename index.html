@@ -517,50 +517,6 @@
         justify-content: center;
       }
     }
-
-    .task-tags {
-      display: flex;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-      margin-top: 0.5rem;
-    }
-
-    .task-tag {
-      background: #1e293b;
-      color: #94a3b8;
-      padding: 0.25rem 0.5rem;
-      border-radius: 4px;
-      font-size: 0.75rem;
-      border: 1px solid #475569;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .task-tag:hover {
-      border-color: #a78bfa;
-      color: #e2e8f0;
-    }
-
-    .tag-input {
-      background: transparent;
-      border: none;
-      color: #e2e8f0;
-      padding: 0.25rem;
-      font-size: 0.75rem;
-      outline: none;
-      width: 80px;
-    }
-
-    .tag-input::placeholder {
-      color: #64748b;
-    }
-
-    /* Update mobile styles */
-    @media (max-width: 640px) {
-      .task-tags {
-        margin-left: 2rem;
-      }
-    }
   </style>
 </head>
 <body>
@@ -606,161 +562,26 @@
     <input type="text" placeholder="Enter assignee name" onkeydown="handleAssigneeInput(event)">
   </div>
 
-  <script>
-    let editMode = false;
-    let activeAssignButton = null;
+  <script type="module">
+    import firebaseConfig from './firebase-config.js';
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+    import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-database.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-analytics.js";
 
-    function toggleEditMode() {
-      editMode = !editMode;
-      document.querySelector('[onclick="toggleEditMode()"]').classList.toggle('active');
-      
-      // Update contentEditable for all editable elements
-      document.querySelectorAll('.task-title, .category-name, .project-name').forEach(elem => {
-        elem.contentEditable = editMode;
-        if (editMode) {
-          elem.addEventListener('blur', handleContentEdit);
-          elem.addEventListener('keydown', handleEnterKey);
-        } else {
-          elem.removeEventListener('blur', handleContentEdit);
-          elem.removeEventListener('keydown', handleEnterKey);
-        }
-      });
-    }
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const db = getDatabase(app);
 
-    function toggleGroup(header) {
-      const list = header.nextElementSibling;
-      list.style.display = list.style.display === 'none' ? 'block' : 'none';
-    }
+    // Make db available globally
+    window.db = db;
+    window.dbRef = ref;
+    window.dbSet = set;
+    window.dbGet = get;
+    window.dbOnValue = onValue;
 
-    function toggleStatus(status) {
-      status.classList.toggle('completed');
-      updateStats();
-    }
-
-    function updateStats() {
-      const completed = document.querySelectorAll('.task-status.completed').length;
-      const total = document.querySelectorAll('.task-status').length;
-      document.getElementById('completed-count').textContent = completed;
-      document.getElementById('total-count').textContent = total;
-      
-      document.querySelectorAll('.task-count').forEach(count => {
-        const group = count.closest('.task-group');
-        const groupCompleted = group.querySelectorAll('.task-status.completed').length;
-        const groupTotal = group.querySelectorAll('.task-status').length;
-        count.textContent = `${groupCompleted}/${groupTotal}`;
-      });
-
-      // Save state to localStorage
-      saveState();
-    }
-
-    function showAssigneePopup(button, event) {
-      event.stopPropagation();
-      const popup = document.querySelector('.assignee-popup');
-      const input = popup.querySelector('input');
-      
-      popup.style.display = 'block';
-      popup.style.top = `${event.pageY}px`;
-      popup.style.left = `${event.pageX}px`;
-      
-      activeAssignButton = button;
-      input.value = button.textContent === 'Unassigned' ? '' : button.textContent;
-      input.focus();
-    }
-
-    function handleAssigneeInput(event) {
-      if (event.key === 'Enter') {
-        const value = event.target.value.trim();
-        if (activeAssignButton && value) {
-          activeAssignButton.textContent = value;
-          activeAssignButton.classList.add('assigned');
-        } else if (activeAssignButton) {
-          activeAssignButton.textContent = 'Unassigned';
-          activeAssignButton.classList.remove('assigned');
-        }
-        document.querySelector('.assignee-popup').style.display = 'none';
-        activeAssignButton = null;
-        saveState();
-        updateAssigneeFilters();
-      } else if (event.key === 'Escape') {
-        document.querySelector('.assignee-popup').style.display = 'none';
-        activeAssignButton = null;
-      }
-    }
-
-    function addTask(categoryEl) {
-      if (!categoryEl) {
-        alert('Please select a category first');
-        return;
-      }
-      
-      const taskList = categoryEl.querySelector('.task-list');
-      if (!taskList) {
-        console.error('Task list not found in category');
-        return;
-      }
-
-      const newTask = document.createElement('div');
-      newTask.className = 'task-item';
-      newTask.innerHTML = `
-        <div class="task-status" onclick="toggleStatus(this)"></div>
-        <div class="task-info">
-          <div class="task-title" contenteditable="${editMode}" oninput="updateStats()">New Task</div>
-          <button class="task-assign" onclick="showAssigneePopup(this, event)">Unassigned</button>
-          <div class="task-tags">
-            <input type="text" class="tag-input" placeholder="Add tag..." onkeydown="handleTagInput(event)">
-          </div>
-        </div>
-        <span class="delete-button" onclick="deleteTask(this)">×</span>
-      `;
-      
-      try {
-        taskList.appendChild(newTask);
-        updateStats();
-      } catch (e) {
-        console.error('Failed to add task:', e);
-        alert('Failed to add task. Please try again.');
-      }
-    }
-
-    function addCategory() {
-      const container = document.getElementById('task-container');
-      const category = document.createElement('div');
-      category.className = 'task-group';
-      category.innerHTML = `
-        <div class="task-group-header">
-          <div>
-            <span>Category: </span>
-            <span class="category-name" contenteditable="${editMode}" oninput="updateStats()">New Category</span>
-          </div>
-          <div style="display: flex; align-items: center; gap: 1rem;">
-            <button class="add-task-btn" onclick="event.stopPropagation(); addTask(this.closest('.task-group'))">
-              + Add Task
-            </button>
-            <span class="task-count">0/0</span>
-            <span class="delete-button" onclick="deleteCategory(event, this)">×</span>
-          </div>
-        </div>
-        <div class="task-list"></div>
-      `;
-      container.appendChild(category);
-    }
-
-    function deleteTask(button) {
-      button.closest('.task-item').remove();
-      updateStats();
-    }
-
-    function deleteCategory(event, button) {
-      event.stopPropagation();
-      if (confirm('Delete this category and all its tasks?')) {
-        button.closest('.task-group').remove();
-        updateStats();
-      }
-    }
-
-    // State management
-    async function saveState() {
+    // Update saveState function
+    window.saveState = async function() {
       const state = {
         version: '1.0',
         lastModified: new Date().toISOString(),
@@ -774,259 +595,34 @@
             title: task.querySelector('.task-title').textContent,
             completed: task.querySelector('.task-status').classList.contains('completed'),
             assignee: task.querySelector('.task-assign').textContent,
-            createdAt: task.dataset.createdAt || new Date().toISOString(),
-            tags: Array.from(task.querySelectorAll('.task-tag')).map(tag => tag.textContent),
+            createdAt: task.dataset.createdAt || new Date().toISOString()
           }))
         }))
       };
       
-      try {
-        // First try GitHub
-        await updateGitHubFile('data/tasks.json', state);
-      } catch (e) {
-        console.warn('Failed to save to GitHub, falling back to localStorage:', e);
-        localStorage.setItem('wishUponState', JSON.stringify(state));
+      await dbSet(ref(db, 'tasks'), state);
+    };
+
+    // Update loadState function
+    window.loadState = async function() {
+      // Initial load
+      const snapshot = await dbGet(ref(db, 'tasks'));
+      if (snapshot.exists()) {
+        renderState(snapshot.val());
+      } else {
+        addCategory(); // Initialize with empty category
       }
-    }
 
-    async function loadState() {
-      try {
-        // First try GitHub
-        const state = await getGitHubFile('data/tasks.json');
-        renderState(state);
-      } catch (e) {
-        console.warn('Failed to load from GitHub, trying localStorage:', e);
-        // Fall back to localStorage
-        const saved = localStorage.getItem('wishUponState');
-        if (saved) {
-          renderState(JSON.parse(saved));
-        } else {
-          addCategory(); // Initialize with empty category
-        }
-      }
-    }
-
-    // Close assignee popup when clicking outside
-    document.addEventListener('click', (event) => {
-      const popup = document.querySelector('.assignee-popup');
-      if (!popup.contains(event.target) && !event.target.classList.contains('task-assign')) {
-        popup.style.display = 'none';
-        activeAssignButton = null;
-      }
-    });
-
-    // Initialize the app
-    document.addEventListener('DOMContentLoaded', () => {
-      loadState();
-    });
-
-    // Add debouncing for frequent operations
-    function debounce(func, wait) {
-      let timeout;
-      return function executedFunction(...args) {
-        const later = () => {
-          clearTimeout(timeout);
-          func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-      };
-    }
-
-    // Use debounced version for save operations
-    const debouncedSave = debounce(saveState, 1000);
-
-    // Update event listeners
-    function handleTaskEdit() {
-      debouncedSave();
-    }
-
-    // Add basic service worker registration
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-          .then(registration => console.log('ServiceWorker registered'))
-          .catch(err => console.log('ServiceWorker registration failed:', err));
-      });
-    }
-
-    // Add offline detection
-    window.addEventListener('online', function() {
-      document.body.classList.remove('offline');
-    });
-
-    window.addEventListener('offline', function() {
-      document.body.classList.add('offline');
-      alert('You are offline. Changes will be saved locally.');
-    });
-
-    function handleProjectNameChange(event) {
-      const projectName = event.target.textContent.trim();
-      if (!projectName) {
-        event.target.textContent = event.target.dataset.default;
-      }
-      document.title = `${projectName} - Development Constellation Map`;
-      saveState();
-    }
-
-    function handleContentEdit(event) {
-      const content = event.target.textContent.trim();
-      if (!content) {
-        event.target.textContent = event.target.classList.contains('task-title') ? 'New Task' : 'New Category';
-      }
-      saveState();
-    }
-
-    function handleEnterKey(event) {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        event.target.blur();
-      }
-    }
-
-    function updateAssigneeFilters() {
-      const assignees = new Set(['all']);
-      
-      // Collect all unique assignees
-      document.querySelectorAll('.task-assign').forEach(assign => {
-        const assignee = assign.textContent.trim();
-        if (assignee !== 'Unassigned') {
-          assignees.add(assignee);
+      // Listen for real-time updates
+      onValue(ref(db, 'tasks'), (snapshot) => {
+        if (snapshot.exists()) {
+          renderState(snapshot.val());
         }
       });
+    };
 
-      // Update filter buttons
-      const filterContainer = document.getElementById('assignee-filters');
-      filterContainer.innerHTML = ''; // Clear existing filters
-      
-      // Add filter buttons for each assignee
-      assignees.forEach(assignee => {
-        const button = document.createElement('button');
-        button.className = 'assignee-filter' + (assignee === 'all' ? ' active' : '');
-        button.setAttribute('data-assignee', assignee);
-        button.textContent = assignee === 'all' ? 'All' : assignee;
-        button.onclick = () => filterTasks(assignee);
-        filterContainer.appendChild(button);
-      });
-    }
-
-    function filterTasks(assignee) {
-      // Update active filter button
-      document.querySelectorAll('.assignee-filter').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.assignee === assignee);
-      });
-
-      // Show/hide tasks based on filter
-      document.querySelectorAll('.task-item').forEach(task => {
-        const taskAssignee = task.querySelector('.task-assign').textContent.trim();
-        const shouldShow = assignee === 'all' || taskAssignee === assignee;
-        task.style.display = shouldShow ? '' : 'none';
-      });
-
-      // Update category visibility
-      document.querySelectorAll('.task-group').forEach(group => {
-        const hasVisibleTasks = Array.from(group.querySelectorAll('.task-item'))
-          .some(task => task.style.display !== 'none');
-        group.style.display = hasVisibleTasks ? '' : 'none';
-      });
-
-      updateStats();
-    }
-
-    // Add these functions after your existing script
-    function getGitHubFile(path) {
-      // Replace with your repo details
-      const owner = 'andraszao';
-      const repo = 'andraszao.github.io';
-      const branch = 'main';
-
-      return fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`)
-        .then(response => response.json())
-        .then(data => {
-          // Decode content from base64
-          return JSON.parse(atob(data.content));
-        });
-    }
-
-    function updateGitHubFile(path, content, sha) {
-      // Replace with your repo details and personal access token
-      const owner = 'andraszao';
-      const repo = 'andraszao.github.io';
-      const token = 'YOUR_GITHUB_TOKEN'; // Store this securely!
-
-      return fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `token ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: 'Update tasks',
-          content: btoa(JSON.stringify(content, null, 2)),
-          sha: sha,
-          branch: 'main'
-        })
-      }).then(response => response.json());
-    }
-
-    // Add a function to handle periodic updates
-    function startPeriodicSync(interval = 30000) {
-      setInterval(async () => {
-        try {
-          const latestState = await getGitHubFile('data/tasks.json');
-          if (latestState.lastModified > currentState.lastModified) {
-            renderState(latestState);
-          }
-        } catch (e) {
-          console.warn('Failed to sync with GitHub:', e);
-        }
-      }, interval);
-    }
-
-    // Add these new functions for tag handling
-    function handleTagInput(event) {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        const input = event.target;
-        const tagText = input.value.trim();
-        
-        if (tagText) {
-          addTag(input.closest('.task-tags'), tagText);
-          input.value = '';
-          saveState();
-        }
-      }
-    }
-
-    function addTag(container, text) {
-      const tag = document.createElement('span');
-      tag.className = 'task-tag';
-      tag.textContent = text;
-      tag.onclick = () => {
-        if (editMode) {
-          tag.remove();
-          saveState();
-        }
-      };
-      container.insertBefore(tag, container.lastElementChild);
-    }
-
-    // Update the renderState function to handle tags (if you have one)
-    function renderState(state) {
-      // ... existing render logic ...
-      
-      // Render tags for each task
-      state.categories.forEach(category => {
-        category.tasks.forEach((task, index) => {
-          const taskEl = document.querySelectorAll('.task-item')[index];
-          const tagsContainer = taskEl.querySelector('.task-tags');
-          
-          task.tags.forEach(tagText => {
-            addTag(tagsContainer, tagText);
-          });
-        });
-      });
-    }
+    // Initialize the app when the module loads
+    loadState();
   </script>
 </body>
 </html>
