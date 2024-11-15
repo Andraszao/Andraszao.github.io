@@ -35,7 +35,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { FixedSizeList } from 'react-window';
-import { toast } from 'react-hot-toast';
+import { Toaster, toast } from 'react-hot-toast';
 
 // Add theme context
 const ThemeContext = createContext({
@@ -677,20 +677,31 @@ const App = () => {
   };
 
   const handleDeleteProject = (projectId) => {
-    // Add undo capability
     const projectCopy = projects.find(p => p.id === projectId);
     setProjects(prev => prev.filter(p => p.id !== projectId));
     
-    // Show toast with undo option
-    toast({
-      title: "Project deleted",
-      description: "The project has been removed",
-      action: {
-        label: "Undo",
-        onClick: () => setProjects(prev => [...prev, projectCopy])
-      },
-      duration: 5000
-    });
+    toast.promise(
+      new Promise((resolve) => {
+        setTimeout(resolve, 5000);
+      }),
+      {
+        loading: 'Deleting project...',
+        success: (data) => {
+          return (
+            <div className="flex items-center gap-2">
+              <span>Project deleted</span>
+              <button
+                className="text-blue-500 hover:text-blue-700"
+                onClick={() => setProjects(prev => [...prev, projectCopy])}
+              >
+                Undo
+              </button>
+            </div>
+          );
+        },
+        error: 'Error deleting project',
+      }
+    );
   };
 
   const handleDeleteTask = (projectId, taskId) => {
@@ -730,6 +741,12 @@ const AppContent = () => {
   
   return (
     <div className="min-h-screen transition-colors duration-200 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+      <Toaster position="bottom-right" toastOptions={{
+        style: {
+          background: theme === 'dark' ? '#374151' : '#fff',
+          color: theme === 'dark' ? '#fff' : '#000',
+        },
+      }} />
       <div className="max-w-3xl mx-auto p-4">
         <div className="mb-8 text-center">
           <div className="flex items-center justify-center gap-2 mb-2">
