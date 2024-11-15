@@ -526,6 +526,7 @@
       <span class="project-name" contenteditable="false" 
             onblur="handleProjectNameChange(event)" 
             data-default="Wish Upon">Wish Upon</span>
+      <span id="sync-status" style="font-size: 0.8em; margin-left: 1rem;"></span>
     </div>
     <div class="toolbar">
       <button onclick="toggleEditMode()">Edit Mode</button>
@@ -605,13 +606,25 @@
                 const taskId = 'default-task-list';
                 await set(ref(window.db, `tasks/${taskId}`), state);
                 console.log('Saved to Firebase');
+                updateSyncStatus('Synced to Cloud ☁️');
             } else {
                 throw new Error('Firebase not initialized');
             }
         } catch (e) {
             console.error('Failed to save to Firebase:', e);
             localStorage.setItem('taskState', JSON.stringify(state));
+            updateSyncStatus('Saved Locally 💾');
         }
+    }
+
+    // Add this new function
+    function updateSyncStatus(message) {
+        const statusEl = document.getElementById('sync-status');
+        statusEl.textContent = message;
+        // Fade out after 2 seconds
+        setTimeout(() => {
+            statusEl.style.opacity = '0.5';
+        }, 2000);
     }
 
     // Expose functions to global scope
@@ -623,6 +636,7 @@
         try {
             if (!window.FIREBASE_CONFIG) {
                 console.error('Firebase config is missing');
+                updateSyncStatus('Local Mode (No Firebase Config) 💾');
                 throw new Error('Firebase config not found');
             }
             
@@ -639,6 +653,7 @@
             const analytics = getAnalytics(app);
             
             console.log('Firebase initialized successfully');
+            updateSyncStatus('Connected to Cloud ☁️');
             
             // Set up realtime listener
             const taskId = 'default-task-list';
@@ -672,6 +687,7 @@
 
         } catch (e) {
             console.error('Firebase initialization failed:', e);
+            updateSyncStatus('Local Mode (Firebase Error) 💾');
             // Load from localStorage if available
             const savedState = localStorage.getItem('taskState');
             if (savedState) {
