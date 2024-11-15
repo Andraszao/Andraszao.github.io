@@ -1206,6 +1206,13 @@
         });
       }
     }
+
+    function updateSyncStatus(message) {
+      const statusEl = document.getElementById('sync-status');
+      if (statusEl) {
+        statusEl.textContent = message;
+      }
+    }
   </script>
 
   <script type="module">
@@ -1218,30 +1225,52 @@
 
     async function init() {
       try {
+        // Check if Firebase config exists
         if (!window.FIREBASE_CONFIG) {
           console.error('Firebase config is missing');
           updateSyncStatus('Local Mode (No Firebase Config) 💾');
-          throw new Error('Firebase config not found');
+          
+          // Load from localStorage as fallback
+          const savedState = localStorage.getItem('taskState');
+          if (savedState) {
+            renderState(JSON.parse(savedState));
+          }
+          return;
         }
-        
+
         const config = JSON.parse(window.FIREBASE_CONFIG);
         const app = initializeApp(config);
         window.db = getDatabase(app);
         const analytics = getAnalytics(app);
-        
+
         updateSyncStatus('Connected to Cloud ☁️');
+
+        // Set up real-time sync
+        const taskId = 'default-task-list';
+        const tasksRef = ref(window.db, `tasks/${taskId}`);
         
-        // Add a flag to prevent recursive updates
-        let isUpdating = false;
+        onValue(tasksRef, (snapshot) => {
+          const data = snapshot.val();
+          if (data && (!window.lastLocalUpdate || Date.now() - window.lastLocalUpdate > 1000)) {
+            renderState(data);
+          }
+        });
+
+        // Load initial state
+        const savedState = localStorage.getItem('taskState');
+        if (savedState) {
+          renderState(JSON.parse(savedState));
+        }
+
+      } catch (error) {
+        console.error('Firebase initialization error:', error);
+        updateSyncStatus('Error Connecting ⚠️');
         
-        // Add timestamp to track local changes
-        window.lastLocalUpdate = Date.now();
-        
-        // Remove markLocalUpdate definition from here since it's now in global scope
-        
-        // ... rest of the init function remains the same ...
-      } catch (e) {
-        // ... existing catch block ...
+        // Load from localStorage as fallback
+        const savedState = localStorage.getItem('taskState');
+        if (savedState) {
+          renderState(JSON.parse(savedState));
+        }
       }
     }
 
