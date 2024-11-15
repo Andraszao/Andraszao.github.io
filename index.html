@@ -1258,7 +1258,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
     import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
-    import { enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
     // Make Firebase functions globally available
     window.firebaseRef = ref;
@@ -1282,6 +1281,10 @@
         const config = JSON.parse(window.FIREBASE_CONFIG);
         const app = initializeApp(config);
         window.db = getDatabase(app);
+        
+        // Enable offline persistence for Realtime Database
+        window.db.setPersistenceEnabled(true);
+        
         const analytics = getAnalytics(app);
 
         updateSyncStatus('Connected to Cloud ☁️');
@@ -1318,13 +1321,6 @@
             renderState(JSON.parse(savedState));
           }
         });
-
-        try {
-          await enableIndexedDbPersistence(window.db);
-          console.log('Offline persistence enabled');
-        } catch (err) {
-          console.error('Error enabling offline persistence:', err);
-        }
 
       } catch (error) {
         console.error('Firebase initialization error:', error);
