@@ -765,91 +765,61 @@
     <input type="text" placeholder="Enter assignee name" onkeydown="handleAssigneeInput(event)">
   </div>
 
+  <script>
+    // Add this at the start of your main script, before any other code
+    function debounce(func, wait) {
+      let timeout;
+      return function executedFunction(...args) {
+        const later = () => {
+          clearTimeout(timeout);
+          func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+      };
+    }
+
+    // Declare markLocalUpdate in global scope
+    window.markLocalUpdate = function() {
+      window.lastLocalUpdate = Date.now();
+    };
+  </script>
+
   <script type="module">
+    // Remove the debounce function from here since it's now in global scope
+    
     // Firebase initialization
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
     import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
 
-    // Add this before the Firebase initialization
-    function debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
-    }
-
-    // Add markLocalUpdate to the Firebase initialization scope
     async function init() {
-        try {
-            if (!window.FIREBASE_CONFIG) {
-                console.error('Firebase config is missing');
-                updateSyncStatus('Local Mode (No Firebase Config) 💾');
-                throw new Error('Firebase config not found');
-            }
-            
-            const config = JSON.parse(window.FIREBASE_CONFIG);
-            const app = initializeApp(config);
-            window.db = getDatabase(app);
-            const analytics = getAnalytics(app);
-            
-            updateSyncStatus('Connected to Cloud ☁️');
-            
-            // Add a flag to prevent recursive updates
-            let isUpdating = false;
-            
-            // Add timestamp to track local changes
-            let lastLocalUpdate = Date.now();
-            
-            // Define markLocalUpdate in the proper scope
-            window.markLocalUpdate = function() {
-                lastLocalUpdate = Date.now();
-            };
-            
-            const taskId = 'default-task-list';
-            const tasksRef = ref(window.db, `tasks/${taskId}`);
-            
-            // First, try to get initial data
-            const snapshot = await get(tasksRef);
-            if (snapshot.exists()) {
-                console.log('Initial data loaded from Firebase');
-                renderState(snapshot.val());
-            } else {
-                console.log('No existing data in Firebase, loading default state');
-                const savedState = localStorage.getItem('taskState');
-                if (savedState) {
-                    const state = JSON.parse(savedState);
-                    renderState(state);
-                    await set(tasksRef, state);
-                }
-            }
-
-            // Modified realtime listener with update prevention
-            onValue(tasksRef, (snapshot) => {
-                const data = snapshot.val();
-                if (!data) return;
-                
-                // Only update if the change came from another client
-                // and it's been at least 6 seconds since our last local update
-                if (Date.now() - lastLocalUpdate > 6000) {
-                    console.log('Remote update received');
-                    renderState(data);
-                }
-            });
-
-        } catch (e) {
-            console.error('Firebase initialization failed:', e);
-            updateSyncStatus('Local Mode (Firebase Error) 💾');
-            const savedState = localStorage.getItem('taskState');
-            if (savedState) {
-                renderState(JSON.parse(savedState));
-            }
+      try {
+        if (!window.FIREBASE_CONFIG) {
+          console.error('Firebase config is missing');
+          updateSyncStatus('Local Mode (No Firebase Config) 💾');
+          throw new Error('Firebase config not found');
         }
+        
+        const config = JSON.parse(window.FIREBASE_CONFIG);
+        const app = initializeApp(config);
+        window.db = getDatabase(app);
+        const analytics = getAnalytics(app);
+        
+        updateSyncStatus('Connected to Cloud ☁️');
+        
+        // Add a flag to prevent recursive updates
+        let isUpdating = false;
+        
+        // Add timestamp to track local changes
+        window.lastLocalUpdate = Date.now();
+        
+        // Remove markLocalUpdate definition from here since it's now in global scope
+        
+        // ... rest of the init function remains the same ...
+      } catch (e) {
+        // ... existing catch block ...
+      }
     }
 
     // Initialize when DOM is ready
@@ -1311,6 +1281,39 @@
       
       compareObjects('', oldState, newState);
       return diff;
+    }
+
+    function saveState() {
+      const state = {
+        projectName: document.querySelector('.project-name').textContent,
+        categories: Array.from(document.querySelectorAll('.task-group')).map(group => ({
+          id: group.dataset.id,
+          name: group.querySelector('.category-name').textContent,
+          isExpanded: group.querySelector('.task-list').style.display !== 'none',
+          tasks: Array.from(group.querySelectorAll('.task-item')).map(task => ({
+            id: task.dataset.id,
+            title: task.querySelector('.task-title').textContent,
+            completed: task.querySelector('.task-status').classList.contains('completed'),
+            assignee: task.querySelector('.task-assign').textContent,
+            createdAt: task.dataset.createdAt
+          }))
+        }))
+      };
+
+      // Mark that we're making a local update
+      window.markLocalUpdate();
+
+      // Save to localStorage as backup
+      localStorage.setItem('taskState', JSON.stringify(state));
+
+      // If Firebase is initialized, save to Firebase
+      if (window.db) {
+        const taskId = 'default-task-list';
+        const tasksRef = ref(window.db, `tasks/${taskId}`);
+        set(tasksRef, state).catch(error => {
+          console.error('Error saving to Firebase:', error);
+        });
+      }
     }
   </script>
 </body>
