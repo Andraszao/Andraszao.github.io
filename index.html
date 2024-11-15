@@ -765,7 +765,45 @@
     <input type="text" placeholder="Enter assignee name" onkeydown="handleAssigneeInput(event)">
   </div>
 
+  <script>
+    // Utility functions
+    function debounce(func, wait) {
+      let timeout;
+      return function executedFunction(...args) {
+        const later = () => {
+          clearTimeout(timeout);
+          func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+      };
+    }
+
+    // Replace saveState with state manager version
+    function saveState() {
+      if (window.isProcessingRemoteUpdate) return;
+      saveToFirebase('manual-save');
+    }
+
+    // Make sure updateSyncStatus is globally available
+    function updateSyncStatus(message) {
+      const statusEl = document.getElementById('sync-status');
+      if (statusEl) {
+        statusEl.textContent = message;
+        statusEl.style.opacity = '1';
+        setTimeout(() => {
+          statusEl.style.opacity = '0.5';
+        }, 2000);
+      }
+    }
+  </script>
+
   <script type="module">
+    // Your Firebase config (replace with your actual config)
+    window.FIREBASE_CONFIG = JSON.stringify({
+      // Your Firebase configuration object
+    });
+
     // Firebase initialization
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
     import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
@@ -868,9 +906,6 @@
             
             updateSyncStatus('Connected to Cloud ☁️');
             
-            // Add a flag to prevent recursive updates
-            let isUpdating = false;
-            
             const taskId = 'default-task-list';
             const tasksRef = ref(window.db, `tasks/${taskId}`);
             
@@ -878,60 +913,40 @@
             const snapshot = await get(tasksRef);
             if (snapshot.exists()) {
                 console.log('Initial data loaded from Firebase');
-                renderState(snapshot.val());
+                const data = snapshot.val();
+                taskManager.dispatch({ type: 'LOAD_STATE', payload: data });
             } else {
                 console.log('No existing data in Firebase, loading default state');
                 const savedState = localStorage.getItem('taskState');
                 if (savedState) {
                     const state = JSON.parse(savedState);
-                    renderState(state);
-                    await set(tasksRef, state);
+                    taskManager.dispatch({ type: 'LOAD_STATE', payload: state });
                 }
             }
 
-            // Add timestamp tracking for updates
-            let lastUpdateTime = Date.now();
-            let lastLocalChange = Date.now();
-
-            // Modified Firebase listener
+            // Set up Firebase listener
             onValue(tasksRef, (snapshot) => {
                 const data = snapshot.val();
                 if (!data) return;
                 
-                // Skip if this is our own update
                 if (data.lastModified === window.lastLocalUpdate) {
                   console.log('Skipping own update');
                   return;
                 }
                 
-                // Process remote update
                 window.isProcessingRemoteUpdate = true;
                 console.log('Processing remote update:', data.changeType);
-                
-                // Convert Firebase data format to state manager format
-                const stateData = {
-                  projectName: data.projectName,
-                  categories: data.categories || [],
-                  tasks: data.tasks || new Map(),
-                  editMode: false,
-                  lastSync: data.lastModified
-                };
-                
-                taskManager.dispatch({ type: 'LOAD_STATE', payload: stateData });
+                taskManager.dispatch({ type: 'LOAD_STATE', payload: data });
                 window.isProcessingRemoteUpdate = false;
             });
-
-            // Update timestamp when we make local changes
-            function markLocalUpdate() {
-                lastLocalChange = Date.now();
-            }
 
         } catch (e) {
             console.error('Firebase initialization failed:', e);
             updateSyncStatus('Local Mode (Firebase Error) 💾');
             const savedState = localStorage.getItem('taskState');
             if (savedState) {
-                renderState(JSON.parse(savedState));
+                const state = JSON.parse(savedState);
+                taskManager.dispatch({ type: 'LOAD_STATE', payload: state });
             }
         }
     }
