@@ -151,6 +151,18 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .task-status.completed::after {
+      opacity: 1;
+    }
+
+    .task-status.completed + .task-info .task-title {
+      text-decoration: line-through;
+      opacity: 0.7;
+      transition: all 0.3s;
     }
 
     .task-info {
