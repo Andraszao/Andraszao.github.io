@@ -34,7 +34,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import Hammer from 'hammerjs';
 import { VirtualizedList } from 'react-virtualized';
 import { toast } from 'react-hot-toast';
 
@@ -172,14 +171,25 @@ const SortableTask = ({ task, projectId, onToggle, onEdit, onAddSubtask, onAddTa
     transition,
   };
 
-  // Add swipe gestures for common actions
-  useEffect(() => {
-    const hammer = new Hammer(taskRef.current);
-    hammer.on('swiperight', () => handleToggleTask(projectId, taskId));
-    hammer.on('swipeleft', () => handleDelete(projectId, taskId));
+  const touchStart = useRef(0);
+
+  const handleTouchStart = (e) => {
+    const touch = e.touches[0];
+    touchStart.current = touch.clientX;
+  };
+
+  const handleTouchEnd = (e) => {
+    const touch = e.changedTouches[0];
+    const diff = touchStart.current - touch.clientX;
     
-    return () => hammer.destroy();
-  }, []);
+    if (Math.abs(diff) > 50) { // minimum swipe distance
+      if (diff > 0) {
+        onDelete(task.id); // swipe left to delete
+      } else {
+        onToggle(task.id); // swipe right to toggle
+      }
+    }
+  };
 
   return (
     <div ref={setNodeRef} style={style} className="group">
