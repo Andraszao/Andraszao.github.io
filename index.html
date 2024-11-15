@@ -568,6 +568,18 @@
     import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
 
+    function debounce(func, wait) {
+      let timeout;
+      return function executedFunction(...args) {
+        const later = () => {
+          clearTimeout(timeout);
+          func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+      };
+    }
+
     // Make these functions available globally
     window.saveState = async function() {
         const state = {
@@ -598,6 +610,8 @@
             localStorage.setItem('taskState', JSON.stringify(state));
         }
     };
+
+    window.debouncedSave = debounce(window.saveState, 1000);
 
     window.loadState = async function() {
         try {
@@ -630,13 +644,17 @@
 
     // Initialize Firebase when the module loads
     try {
-        const response = await fetch('firebase-config.js');
+        const response = await fetch('/firebase-config.js');
+        if (!response.ok) {
+            throw new Error(`Failed to load Firebase config: ${response.status}`);
+        }
         const configModule = await import(URL.createObjectURL(new Blob([await response.text()], {type: 'text/javascript'})));
         const app = initializeApp(configModule.default);
         const analytics = getAnalytics(app);
         console.log('Firebase initialized successfully');
     } catch (e) {
         console.error('Failed to initialize Firebase:', e);
+        // Continue with localStorage fallback
     }
 
     // Initialize the app when the DOM is ready
@@ -794,22 +812,8 @@
       }
     });
 
-    function debounce(func, wait) {
-      let timeout;
-      return function executedFunction(...args) {
-        const later = () => {
-          clearTimeout(timeout);
-          func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-      };
-    }
-
-    const debouncedSave = debounce(saveState, 1000);
-
     function handleTaskEdit() {
-      debouncedSave();
+        window.debouncedSave();
     }
 
     // Add offline detection
