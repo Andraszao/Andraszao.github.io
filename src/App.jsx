@@ -696,40 +696,6 @@ const App = () => {
     }));
   };
 
-  const handleRemoveTag = (projectId, taskId, tagToRemove, subtaskId = null) => {
-    setProjects(prev => prev.map(project => {
-      if (project.id === projectId) {
-        return {
-          ...project,
-          tasks: project.tasks.map(task => {
-            if (task.id === taskId && !subtaskId) {
-              return {
-                ...task,
-                tags: task.tags.filter(tag => tag !== tagToRemove)
-              };
-            }
-            if (task.id === taskId && subtaskId) {
-              return {
-                ...task,
-                subtasks: task.subtasks.map(subtask => {
-                  if (subtask.id === subtaskId) {
-                    return {
-                      ...subtask,
-                      tags: subtask.tags.filter(tag => tag !== tagToRemove)
-                    };
-                  }
-                  return subtask;
-                })
-              };
-            }
-            return task;
-          })
-        };
-      }
-      return project;
-    }));
-  };
-
   // Add intelligent task suggestions based on patterns
   const suggestNextAction = (project) => {
     const timeOfDay = new Date().getHours();
