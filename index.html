@@ -517,6 +517,50 @@
         justify-content: center;
       }
     }
+
+    .task-tags {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-top: 0.5rem;
+    }
+
+    .task-tag {
+      background: #1e293b;
+      color: #94a3b8;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      border: 1px solid #475569;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .task-tag:hover {
+      border-color: #a78bfa;
+      color: #e2e8f0;
+    }
+
+    .tag-input {
+      background: transparent;
+      border: none;
+      color: #e2e8f0;
+      padding: 0.25rem;
+      font-size: 0.75rem;
+      outline: none;
+      width: 80px;
+    }
+
+    .tag-input::placeholder {
+      color: #64748b;
+    }
+
+    /* Update mobile styles */
+    @media (max-width: 640px) {
+      .task-tags {
+        margin-left: 2rem;
+      }
+    }
   </style>
 </head>
 <body>
@@ -663,6 +707,9 @@
         <div class="task-info">
           <div class="task-title" contenteditable="${editMode}" oninput="updateStats()">New Task</div>
           <button class="task-assign" onclick="showAssigneePopup(this, event)">Unassigned</button>
+          <div class="task-tags">
+            <input type="text" class="tag-input" placeholder="Add tag..." onkeydown="handleTagInput(event)">
+          </div>
         </div>
         <span class="delete-button" onclick="deleteTask(this)">×</span>
       `;
@@ -727,7 +774,8 @@
             title: task.querySelector('.task-title').textContent,
             completed: task.querySelector('.task-status').classList.contains('completed'),
             assignee: task.querySelector('.task-assign').textContent,
-            createdAt: task.dataset.createdAt || new Date().toISOString()
+            createdAt: task.dataset.createdAt || new Date().toISOString(),
+            tags: Array.from(task.querySelectorAll('.task-tag')).map(tag => tag.textContent),
           }))
         }))
       };
@@ -933,6 +981,51 @@
           console.warn('Failed to sync with GitHub:', e);
         }
       }, interval);
+    }
+
+    // Add these new functions for tag handling
+    function handleTagInput(event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        const input = event.target;
+        const tagText = input.value.trim();
+        
+        if (tagText) {
+          addTag(input.closest('.task-tags'), tagText);
+          input.value = '';
+          saveState();
+        }
+      }
+    }
+
+    function addTag(container, text) {
+      const tag = document.createElement('span');
+      tag.className = 'task-tag';
+      tag.textContent = text;
+      tag.onclick = () => {
+        if (editMode) {
+          tag.remove();
+          saveState();
+        }
+      };
+      container.insertBefore(tag, container.lastElementChild);
+    }
+
+    // Update the renderState function to handle tags (if you have one)
+    function renderState(state) {
+      // ... existing render logic ...
+      
+      // Render tags for each task
+      state.categories.forEach(category => {
+        category.tasks.forEach((task, index) => {
+          const taskEl = document.querySelectorAll('.task-item')[index];
+          const tagsContainer = taskEl.querySelector('.task-tags');
+          
+          task.tags.forEach(tagText => {
+            addTag(tagsContainer, tagText);
+          });
+        });
+      });
     }
   </script>
 </body>
