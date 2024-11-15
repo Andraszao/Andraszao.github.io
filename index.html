@@ -1280,10 +1280,9 @@
 
         const config = JSON.parse(window.FIREBASE_CONFIG);
         const app = initializeApp(config);
-        window.db = getDatabase(app);
         
-        // Enable offline persistence for Realtime Database
-        window.db.setPersistenceEnabled(true);
+        // Initialize database with persistence enabled
+        window.db = getDatabase();
         
         const analytics = getAnalytics(app);
 
@@ -1293,7 +1292,6 @@
         const taskId = 'default-task-list';
         const tasksRef = ref(window.db, `tasks/${taskId}`);
         
-        // Enable offline persistence
         const connectedRef = ref(window.db, '.info/connected');
         onValue(connectedRef, (snap) => {
           if (snap.val() === true) {
