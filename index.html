@@ -568,20 +568,20 @@
     import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
 
+    // Define the functions first
     function debounce(func, wait) {
-      let timeout;
-      return function executedFunction(...args) {
-        const later = () => {
-          clearTimeout(timeout);
-          func(...args);
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
         };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-      };
     }
 
-    // Make these functions available globally
-    window.saveState = async function() {
+    async function saveState() {
         const state = {
             version: '1.0',
             lastModified: new Date().toISOString(),
@@ -601,66 +601,47 @@
         };
         
         try {
-            const db = getDatabase();
-            await set(ref(db, 'tasks'), state);
-            console.log('Saved to Firebase');
+            if (window.db) {
+                await set(ref(window.db, 'tasks'), state);
+                console.log('Saved to Firebase');
+            } else {
+                throw new Error('Firebase not initialized');
+            }
         } catch (e) {
             console.error('Failed to save to Firebase:', e);
-            // Fallback to localStorage
             localStorage.setItem('taskState', JSON.stringify(state));
         }
-    };
-
-    window.debouncedSave = debounce(window.saveState, 1000);
-
-    window.loadState = async function() {
-        try {
-            const db = getDatabase();
-            // Initial load
-            const snapshot = await get(ref(db, 'tasks'));
-            if (snapshot.exists()) {
-                renderState(snapshot.val());
-            } else {
-                addCategory(); // Initialize with empty category
-            }
-
-            // Listen for real-time updates
-            onValue(ref(db, 'tasks'), (snapshot) => {
-                if (snapshot.exists()) {
-                    renderState(snapshot.val());
-                }
-            });
-        } catch (e) {
-            console.error('Failed to load from Firebase:', e);
-            // Fallback to localStorage
-            const savedState = localStorage.getItem('taskState');
-            if (savedState) {
-                renderState(JSON.parse(savedState));
-            } else {
-                addCategory();
-            }
-        }
-    };
-
-    // Initialize Firebase when the module loads
-    try {
-        const response = await fetch('/firebase-config.js');
-        if (!response.ok) {
-            throw new Error(`Failed to load Firebase config: ${response.status}`);
-        }
-        const configModule = await import(URL.createObjectURL(new Blob([await response.text()], {type: 'text/javascript'})));
-        const app = initializeApp(configModule.default);
-        const analytics = getAnalytics(app);
-        console.log('Firebase initialized successfully');
-    } catch (e) {
-        console.error('Failed to initialize Firebase:', e);
-        // Continue with localStorage fallback
     }
 
-    // Initialize the app when the DOM is ready
-    window.addEventListener('DOMContentLoaded', () => {
-        loadState();
-    });
+    // Expose functions to global scope
+    window.saveState = saveState;
+    window.debouncedSave = debounce(saveState, 1000);
+
+    // Initialize Firebase and load state
+    async function init() {
+        try {
+            // Try to initialize Firebase with injected config
+            if (window.FIREBASE_CONFIG) {
+                const app = initializeApp(JSON.parse(window.FIREBASE_CONFIG));
+                window.db = getDatabase(app);
+                const analytics = getAnalytics(app);
+                console.log('Firebase initialized successfully');
+            } else {
+                throw new Error('Firebase config not found');
+            }
+        } catch (e) {
+            console.warn('Failed to initialize Firebase:', e);
+            console.log('Falling back to localStorage');
+        }
+        
+        // Load initial state (you'll need to implement this)
+        if (typeof loadState === 'function') {
+            loadState();
+        }
+    }
+
+    // Initialize when DOM is ready
+    window.addEventListener('DOMContentLoaded', init);
   </script>
 
   <script>
