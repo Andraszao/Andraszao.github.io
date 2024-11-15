@@ -770,6 +770,16 @@
         outline: 2px solid #a78bfa;
         outline-offset: 2px;
     }
+
+    /* Sync status indicator improvements */
+    #sync-status {
+        background: #1e293b;
+        padding: 0.25rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.875rem;
+        border: 1px solid #475569;
+        transition: all 0.2s;
+    }
   </style>
 </head>
 <body>
@@ -1298,7 +1308,7 @@
         }
       } catch (error) {
         console.error('Error saving state:', error);
-        updateSyncStatus('Error saving changes ⚠��');
+        updateSyncStatus('Error saving changes ⚠');
       }
     }
 
