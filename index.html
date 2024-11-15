@@ -771,7 +771,7 @@
     import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
 
-    // Define the functions first
+    // Add this before the Firebase initialization
     function debounce(func, wait) {
         let timeout;
         return function executedFunction(...args) {
@@ -784,52 +784,7 @@
         };
     }
 
-    const stateBuffer = new StateBuffer();
-    let lastSavedState = null;
-
-    async function saveState() {
-        const currentState = {
-            version: '1.0',
-            lastModified: new Date().toISOString(),
-            projectName: document.querySelector('.project-name').textContent,
-            categories: Array.from(document.querySelectorAll('.task-group'))
-                .map(category => ({
-                    id: category.dataset.id,
-                    name: category.querySelector('.category-name').textContent,
-                    isExpanded: category.querySelector('.task-list').style.display !== 'none',
-                    tasks: Array.from(category.querySelectorAll('.task-item'))
-                        .map(task => ({
-                            id: task.dataset.id,
-                            title: task.querySelector('.task-title').textContent,
-                            completed: task.querySelector('.task-status').classList.contains('completed'),
-                            assignee: task.querySelector('.task-assign').textContent,
-                            createdAt: task.dataset.createdAt
-                        }))
-                }))
-        };
-
-        const diff = createDiffState(lastSavedState, currentState);
-        if (Object.keys(diff).length > 0) {
-            stateBuffer.queueChange('tasks/default-task-list', diff);
-            lastSavedState = {...currentState};
-        }
-    }
-
-    // Add this new function
-    function updateSyncStatus(message) {
-        const statusEl = document.getElementById('sync-status');
-        statusEl.textContent = message;
-        // Fade out after 2 seconds
-        setTimeout(() => {
-            statusEl.style.opacity = '0.5';
-        }, 2000);
-    }
-
-    // Expose functions to global scope
-    window.saveState = saveState;
-    window.debouncedSave = debounce(saveState, 5000);
-
-    // Initialize Firebase and load state
+    // Add markLocalUpdate to the Firebase initialization scope
     async function init() {
         try {
             if (!window.FIREBASE_CONFIG) {
@@ -847,6 +802,14 @@
             
             // Add a flag to prevent recursive updates
             let isUpdating = false;
+            
+            // Add timestamp to track local changes
+            let lastLocalUpdate = Date.now();
+            
+            // Define markLocalUpdate in the proper scope
+            window.markLocalUpdate = function() {
+                lastLocalUpdate = Date.now();
+            };
             
             const taskId = 'default-task-list';
             const tasksRef = ref(window.db, `tasks/${taskId}`);
@@ -866,9 +829,6 @@
                 }
             }
 
-            // Add a timestamp to track local changes
-            let lastLocalUpdate = Date.now();
-
             // Modified realtime listener with update prevention
             onValue(tasksRef, (snapshot) => {
                 const data = snapshot.val();
@@ -881,11 +841,6 @@
                     renderState(data);
                 }
             });
-
-            // Update timestamp when we make local changes
-            function markLocalUpdate() {
-                lastLocalUpdate = Date.now();
-            }
 
         } catch (e) {
             console.error('Firebase initialization failed:', e);
