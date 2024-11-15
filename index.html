@@ -900,11 +900,27 @@
     .category-label {
       color: #94a3b8;
       font-style: italic;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      transition: all 0.2s;
+      cursor: pointer;
     }
 
-    .category-label[contenteditable="true"]:hover {
+    .category-label[contenteditable="true"] {
+      background: #1e293b;
+      cursor: text;
+    }
+
+    .category-label[contenteditable="true"]:hover,
+    .category-label[contenteditable="true"]:focus {
       background: #2d3748;
-      border-radius: 4px;
+      color: #e2e8f0;
+      outline: none;
+    }
+
+    .category-label:empty::before {
+      content: 'Type';
+      opacity: 0.6;
     }
   </style>
 <script>window.FIREBASE_CONFIG = '{"apiKey":"AIzaSyCXE9UyJeSjcFOOoDucZhoaQOvtn1yTHmk","authDomain":"taskmaster-6bfbd.firebaseapp.com","projectId":"taskmaster-6bfbd","storageBucket":"taskmaster-6bfbd.firebasestorage.app","messagingSenderId":"583197012210","appId":"1:583197012210:web:a2db1887d327b4ae4e606b","measurementId":"G-QP2LY3XC9L"}';</script></head>
@@ -985,7 +1001,8 @@
       editMode = !editMode;
       document.querySelector('[onclick="toggleEditMode()"]').classList.toggle('active');
       
-      document.querySelectorAll('.task-title, .category-name, .project-name').forEach(elem => {
+      // Update all editable elements
+      document.querySelectorAll('.task-title, .category-name, .project-name, .category-label').forEach(elem => {
         elem.contentEditable = editMode;
         if (editMode) {
           elem.addEventListener('blur', handleContentEdit);
@@ -1165,14 +1182,15 @@
       const categoryId = crypto.randomUUID();
       category.className = 'task-group';
       category.dataset.id = categoryId;
+      
       category.innerHTML = `
         <div class="task-group-header" onclick="toggleGroup(this)">
           <div>
             <span class="category-label" 
                   contenteditable="${editMode}" 
                   onclick="event.stopPropagation()"
-                  onblur="handleCategoryLabelChange(this)">Category</span>:
-            <span class="category-name" contenteditable="${editMode}">New Category</span>
+                  onblur="handleCategoryLabelChange(this, event)">Type</span>:
+            <span class="category-name" contenteditable="${editMode}">${'New Category'}</span>
           </div>
           <div style="display: flex; align-items: center; gap: 1rem;">
             <button class="add-task-btn" onclick="event.stopPropagation(); addTask(this.closest('.task-group'))">
@@ -1356,7 +1374,7 @@
                 <span class="category-label" 
                       contenteditable="${editMode}" 
                       onclick="event.stopPropagation()"
-                      onblur="handleCategoryLabelChange(this)">${category.label || 'Category'}</span>:
+                      onblur="handleCategoryLabelChange(this, event)">${category.label || 'Type'}</span>:
                 <span class="category-name" contenteditable="${editMode}">${category.name || 'New Category'}</span>
               </div>
               <div style="display: flex; align-items: center; gap: 1rem;">
@@ -1565,11 +1583,18 @@
       initializeDropZones();
     });
 
-    function handleCategoryLabelChange(element) {
+    function handleCategoryLabelChange(element, event) {
+      event.stopPropagation();
       const newLabel = element.textContent.trim();
+      
+      // Don't allow empty labels
       if (!newLabel) {
-        element.textContent = 'Category';
+        element.textContent = 'Type';
+        return;
       }
+      
+      // Update the label
+      element.textContent = newLabel;
       saveState();
     }
 
