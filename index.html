@@ -784,38 +784,34 @@
         };
     }
 
+    const stateBuffer = new StateBuffer();
+    let lastSavedState = null;
+
     async function saveState() {
-        markLocalUpdate(); // Mark this as a local update
-        
-        const state = {
+        const currentState = {
             version: '1.0',
             lastModified: new Date().toISOString(),
             projectName: document.querySelector('.project-name').textContent,
-            categories: Array.from(document.querySelectorAll('.task-group')).map(category => ({
-                id: category.dataset.id || crypto.randomUUID(),
-                name: category.querySelector('.category-name').textContent,
-                isExpanded: category.querySelector('.task-list').style.display !== 'none',
-                tasks: Array.from(category.querySelectorAll('.task-item')).map(task => ({
-                    id: task.dataset.id || crypto.randomUUID(),
-                    title: task.querySelector('.task-title').textContent,
-                    completed: task.querySelector('.task-status').classList.contains('completed'),
-                    assignee: task.querySelector('.task-assign').textContent,
-                    createdAt: task.dataset.createdAt || new Date().toISOString()
+            categories: Array.from(document.querySelectorAll('.task-group'))
+                .map(category => ({
+                    id: category.dataset.id,
+                    name: category.querySelector('.category-name').textContent,
+                    isExpanded: category.querySelector('.task-list').style.display !== 'none',
+                    tasks: Array.from(category.querySelectorAll('.task-item'))
+                        .map(task => ({
+                            id: task.dataset.id,
+                            title: task.querySelector('.task-title').textContent,
+                            completed: task.querySelector('.task-status').classList.contains('completed'),
+                            assignee: task.querySelector('.task-assign').textContent,
+                            createdAt: task.dataset.createdAt
+                        }))
                 }))
-            }))
         };
-        
-        try {
-            if (window.db) {
-                const taskId = 'default-task-list';
-                await set(ref(window.db, `tasks/${taskId}`), state);
-                console.log('Saved to Firebase');
-                updateSyncStatus('Synced to Cloud ☁️');
-            }
-        } catch (e) {
-            console.error('Failed to save to Firebase:', e);
-            localStorage.setItem('taskState', JSON.stringify(state));
-            updateSyncStatus('Saved Locally 💾');
+
+        const diff = createDiffState(lastSavedState, currentState);
+        if (Object.keys(diff).length > 0) {
+            stateBuffer.queueChange('tasks/default-task-list', diff);
+            lastSavedState = {...currentState};
         }
     }
 
@@ -1342,6 +1338,25 @@
 
     // Throttle the updateStats function
     const throttledUpdateStats = throttle(updateStats, 1000);
+
+    function createDiffState(oldState, newState) {
+      const diff = {};
+      
+      function compareObjects(path, obj1, obj2) {
+        for (const [key, value] of Object.entries(obj2)) {
+          const currentPath = path ? `${path}/${key}` : key;
+          
+          if (typeof value === 'object' && value !== null) {
+            compareObjects(currentPath, obj1?.[key] || {}, value);
+          } else if (value !== obj1?.[key]) {
+            diff[currentPath] = value;
+          }
+        }
+      }
+      
+      compareObjects('', oldState, newState);
+      return diff;
+    }
   </script>
 </body>
 </html>
