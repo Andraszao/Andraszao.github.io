@@ -785,6 +785,8 @@
     }
 
     async function saveState() {
+        markLocalUpdate(); // Mark this as a local update
+        
         const state = {
             version: '1.0',
             lastModified: new Date().toISOString(),
@@ -809,8 +811,6 @@
                 await set(ref(window.db, `tasks/${taskId}`), state);
                 console.log('Saved to Firebase');
                 updateSyncStatus('Synced to Cloud ☁️');
-            } else {
-                throw new Error('Firebase not initialized');
             }
         } catch (e) {
             console.error('Failed to save to Firebase:', e);
@@ -831,7 +831,7 @@
 
     // Expose functions to global scope
     window.saveState = saveState;
-    window.debouncedSave = debounce(saveState, 2000);
+    window.debouncedSave = debounce(saveState, 5000);
 
     // Initialize Firebase and load state
     async function init() {
@@ -870,18 +870,26 @@
                 }
             }
 
+            // Add a timestamp to track local changes
+            let lastLocalUpdate = Date.now();
+
             // Modified realtime listener with update prevention
             onValue(tasksRef, (snapshot) => {
-                if (isUpdating) return; // Skip if we're already updating
-                
                 const data = snapshot.val();
-                if (data) {
-                    console.log('Realtime update received');
-                    isUpdating = true;
+                if (!data) return;
+                
+                // Only update if the change came from another client
+                // and it's been at least 6 seconds since our last local update
+                if (Date.now() - lastLocalUpdate > 6000) {
+                    console.log('Remote update received');
                     renderState(data);
-                    isUpdating = false;
                 }
             });
+
+            // Update timestamp when we make local changes
+            function markLocalUpdate() {
+                lastLocalUpdate = Date.now();
+            }
 
         } catch (e) {
             console.error('Firebase initialization failed:', e);
@@ -1110,7 +1118,7 @@
       if (!content) {
         event.target.textContent = event.target.classList.contains('task-title') ? 'New Task' : 'New Category';
       }
-      saveState();
+      window.debouncedSave();
     }
 
     function handleEnterKey(event) {
@@ -1250,12 +1258,23 @@
       });
     }
 
-    // Add these after your existing event listeners
+    // Create a single debounced save function with a longer delay
+    window.debouncedSave = debounce(saveState, 5000); // 5 second delay
+
+    // Only trigger saves on actual data changes
     document.addEventListener('taskAdded', () => window.debouncedSave());
     document.addEventListener('taskDeleted', () => window.debouncedSave());
-    document.addEventListener('taskEdited', () => window.debouncedSave());
     document.addEventListener('categoryAdded', () => window.debouncedSave());
     document.addEventListener('categoryDeleted', () => window.debouncedSave());
+
+    // For content edits, we'll use a separate handler
+    function handleContentEdit(event) {
+        const content = event.target.textContent.trim();
+        if (!content) {
+            event.target.textContent = event.target.classList.contains('task-title') ? 'New Task' : 'New Category';
+        }
+        window.debouncedSave();
+    }
 
     function toggleLeaderboard() {
       const overlay = document.getElementById('leaderboard-overlay');
