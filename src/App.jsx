@@ -567,6 +567,9 @@ const App = () => {
                     onToggle={(taskId, subtaskId) => 
                       handleToggleTask(project.id, taskId, subtaskId)
                     }
+                    onEdit={(taskId, subtaskId, newName) => 
+                      handleTaskNameChange(project.id, taskId, newName, subtaskId)
+                    }
                     onAddSubtask={(taskId) => 
                       handleAddSubtask(project.id, taskId)
                     }
