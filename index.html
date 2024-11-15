@@ -517,6 +517,75 @@
         justify-content: center;
       }
     }
+
+    .stats {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #1e293b;
+      padding: 1rem 2rem;
+      border-top: 1px solid #475569;
+    }
+
+    .progress-container {
+      max-width: 800px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .progress-bar {
+      height: 20px;
+      background: #0f172a;
+      border: 1px solid #475569;
+      border-radius: 10px;
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 0.5rem;
+    }
+
+    .progress-ticks {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      align-items: stretch;
+    }
+
+    .progress-tick {
+      flex: 1;
+      border-right: 1px solid #475569;
+    }
+
+    .progress-tick:last-child {
+      border-right: none;
+    }
+
+    .progress-fill {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      background: #a78bfa;
+      transition: width 0.3s ease-in-out;
+    }
+
+    .progress-text {
+      color: #e2e8f0;
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 640px) {
+      .stats {
+        padding: 0.75rem 1rem;
+      }
+      
+      .progress-bar {
+        height: 15px;
+      }
+    }
   </style>
 <script>window.FIREBASE_CONFIG = '{"apiKey":"AIzaSyCXE9UyJeSjcFOOoDucZhoaQOvtn1yTHmk","authDomain":"taskmaster-6bfbd.firebaseapp.com","projectId":"taskmaster-6bfbd","storageBucket":"taskmaster-6bfbd.firebasestorage.app","messagingSenderId":"583197012210","appId":"1:583197012210:web:a2db1887d327b4ae4e606b","measurementId":"G-QP2LY3XC9L"}';</script></head>
 <body>
@@ -555,8 +624,15 @@
   <div class="add-category" onclick="addCategory()">+ Add Category</div>
 
   <div class="stats">
-    <div>Inches Taken: <span id="completed-count">0</span> completed inches</div>
-    <div>Total Inches: <span id="total-count">0</span></div>
+    <div class="progress-container">
+      <div class="progress-bar">
+        <div class="progress-ticks"></div>
+        <div class="progress-fill"></div>
+      </div>
+      <div class="progress-text">
+        <span id="completed-count">0</span> / <span id="total-count">0</span> inches taken
+      </div>
+    </div>
   </div>
 
   <div class="assignee-popup">
@@ -734,9 +810,40 @@
     function updateStats() {
       const completed = document.querySelectorAll('.task-status.completed').length;
       const total = document.querySelectorAll('.task-status').length;
+      
+      // Update numbers
       document.getElementById('completed-count').textContent = completed;
       document.getElementById('total-count').textContent = total;
       
+      // Update progress bar
+      const progressBar = document.querySelector('.progress-bar');
+      const progressTicks = document.querySelector('.progress-ticks');
+      const progressFill = document.querySelector('.progress-fill');
+      
+      // Clear existing ticks
+      progressTicks.innerHTML = '';
+      
+      // Add ticks for total tasks
+      for (let i = 0; i < total; i++) {
+        const tick = document.createElement('div');
+        tick.className = 'progress-tick';
+        progressTicks.appendChild(tick);
+      }
+      
+      // Update fill width
+      const percentage = total > 0 ? (completed / total) * 100 : 0;
+      progressFill.style.width = `${percentage}%`;
+      
+      // Add completion effect
+      if (completed === total && total > 0) {
+        progressBar.classList.add('completed');
+        progressFill.style.backgroundColor = '#4ade80'; // Change to green when complete
+      } else {
+        progressBar.classList.remove('completed');
+        progressFill.style.backgroundColor = '#a78bfa'; // Reset to default purple
+      }
+      
+      // Update category counts
       document.querySelectorAll('.task-count').forEach(count => {
         const group = count.closest('.task-group');
         const groupCompleted = group.querySelectorAll('.task-status.completed').length;
