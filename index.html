@@ -1459,16 +1459,16 @@
             };
 
             // Validate each task
-            const tasks = Array.from(group.querySelectorAll('.task-item')).map(task => {
-              if (!task.dataset.id) return null;
-              return {
-                id: task.dataset.id,
-                title: task.querySelector('.task-title')?.textContent || 'New Task',
-                completed: task.querySelector('.task-status')?.classList.contains('completed') || false,
-                assignee: task.querySelector('.task-assign')?.textContent || 'Unassigned',
-                createdAt: task.dataset.createdAt || new Date().toISOString()
-              };
-            }).filter(task => task !== null);
+            const tasks = Array.from(group.querySelectorAll('.task-item')).map(task => ({
+              id: task.dataset.id,
+              title: task.querySelector('.task-title')?.textContent || 'New Task',
+              completed: task.querySelector('.task-status')?.classList.contains('completed') || false,
+              assignee: task.querySelector('.task-assign')?.textContent || 'Unassigned',
+              createdAt: task.dataset.createdAt || new Date().toISOString(),
+              tags: Array.from(task.querySelectorAll('.task-tag'))
+                .map(tag => tag.dataset.tag),
+              categoryLabel: group.querySelector('.category-label').textContent
+            }))
 
             categoryData.tasks = tasks;
             return categoryData;
