@@ -586,6 +586,105 @@
         height: 15px;
       }
     }
+
+    .leaderboard-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(15, 23, 42, 0.9);
+      z-index: 1000;
+      backdrop-filter: blur(4px);
+      padding: 2rem;
+    }
+
+    .leaderboard-content {
+      max-width: 600px;
+      margin: 0 auto;
+      background: #1e293b;
+      border-radius: 8px;
+      border: 1px solid #475569;
+      overflow: hidden;
+    }
+
+    .leaderboard-header {
+      background: #2d3748;
+      padding: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .leaderboard-header h2 {
+      margin: 0;
+      color: #a78bfa;
+      font-size: 1.5rem;
+    }
+
+    .close-button {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 0.5rem;
+    }
+
+    .close-button:hover {
+      color: #e2e8f0;
+    }
+
+    .leaderboard-list {
+      padding: 1rem;
+    }
+
+    .leaderboard-item {
+      display: flex;
+      align-items: center;
+      padding: 1rem;
+      border: 1px solid #475569;
+      border-radius: 4px;
+      margin-bottom: 0.5rem;
+      background: #0f172a;
+      transition: all 0.2s;
+    }
+
+    .leaderboard-item:hover {
+      transform: translateX(4px);
+      border-color: #a78bfa;
+    }
+
+    .leaderboard-rank {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #a78bfa;
+      width: 40px;
+    }
+
+    .leaderboard-name {
+      flex-grow: 1;
+    }
+
+    .leaderboard-score {
+      background: #2d3748;
+      padding: 0.5rem 1rem;
+      border-radius: 999px;
+      color: #a78bfa;
+      font-weight: bold;
+    }
+
+    .leaderboard-medal {
+      font-size: 1.2rem;
+      margin-right: 1rem;
+    }
+
+    @media (max-width: 640px) {
+      .leaderboard-overlay {
+        padding: 1rem;
+      }
+    }
   </style>
 <script>window.FIREBASE_CONFIG = '{"apiKey":"AIzaSyCXE9UyJeSjcFOOoDucZhoaQOvtn1yTHmk","authDomain":"taskmaster-6bfbd.firebaseapp.com","projectId":"taskmaster-6bfbd","storageBucket":"taskmaster-6bfbd.firebasestorage.app","messagingSenderId":"583197012210","appId":"1:583197012210:web:a2db1887d327b4ae4e606b","measurementId":"G-QP2LY3XC9L"}';</script></head>
 <body>
@@ -599,6 +698,9 @@
     </div>
     <div class="toolbar">
       <button onclick="toggleEditMode()">Edit Mode</button>
+      <button onclick="toggleLeaderboard()" data-tooltip="View Leaderboard">
+        🏆 Leaderboard
+      </button>
       <button onclick="window.open('https://github.com/andraszao/andraszao.github.io')" 
               data-tooltip="View source code">
         View Source
@@ -613,6 +715,18 @@
       </button>
     </div>
   </header>
+
+  <div id="leaderboard-overlay" class="leaderboard-overlay">
+    <div class="leaderboard-content">
+      <div class="leaderboard-header">
+        <h2>🏆 Inch Takers Leaderboard</h2>
+        <button class="close-button" onclick="toggleLeaderboard()">×</button>
+      </div>
+      <div class="leaderboard-list">
+        <!-- Will be populated by JavaScript -->
+      </div>
+    </div>
+  </div>
 
   <div class="filter-box">
     <div class="assignee-filters" id="assignee-filters">
@@ -1102,6 +1216,58 @@
     document.addEventListener('taskEdited', () => window.debouncedSave());
     document.addEventListener('categoryAdded', () => window.debouncedSave());
     document.addEventListener('categoryDeleted', () => window.debouncedSave());
+
+    function toggleLeaderboard() {
+      const overlay = document.getElementById('leaderboard-overlay');
+      const isVisible = overlay.style.display === 'block';
+      overlay.style.display = isVisible ? 'none' : 'block';
+      
+      if (!isVisible) {
+        updateLeaderboard();
+      }
+    }
+
+    function updateLeaderboard() {
+      const leaderboardList = document.querySelector('.leaderboard-list');
+      const scores = {};
+      
+      // Count completed tasks per assignee
+      document.querySelectorAll('.task-item').forEach(task => {
+        const isCompleted = task.querySelector('.task-status.completed');
+        if (isCompleted) {
+          const assignee = task.querySelector('.task-assign').textContent;
+          if (assignee !== 'Unassigned') {
+            scores[assignee] = (scores[assignee] || 0) + 1;
+          }
+        }
+      });
+      
+      // Convert to array and sort
+      const sortedScores = Object.entries(scores)
+        .sort(([,a], [,b]) => b - a)
+        .map(([name, score], index) => ({name, score, rank: index + 1}));
+      
+      // Generate HTML
+      leaderboardList.innerHTML = sortedScores
+        .map(({name, score, rank}) => `
+          <div class="leaderboard-item">
+            <span class="leaderboard-rank">#${rank}</span>
+            <span class="leaderboard-medal">
+              ${rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : ''}
+            </span>
+            <span class="leaderboard-name">${name}</span>
+            <span class="leaderboard-score">${score} inches</span>
+          </div>
+        `)
+        .join('') || '<div class="leaderboard-item">No completed tasks yet!</div>';
+    }
+
+    // Update leaderboard when tasks are completed
+    document.addEventListener('taskEdited', () => {
+      if (document.getElementById('leaderboard-overlay').style.display === 'block') {
+        updateLeaderboard();
+      }
+    });
   </script>
 </body>
 </html>
