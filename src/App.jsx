@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, createContext, useContext } from 'react';
 import { 
   DndContext, 
   closestCenter, 
@@ -25,7 +25,8 @@ import {
   Tag as TagIcon, 
   User, 
   Trash, 
-  X 
+  X, 
+  Sun 
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -33,15 +34,45 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import Hammer from 'hammerjs';
+import { VirtualizedList } from 'react-virtualized';
+import { toast } from 'react-hot-toast';
+
+// Add theme context
+const ThemeContext = createContext({
+  theme: 'light',
+  toggleTheme: () => {},
+});
+
+// Add theme provider component
+const ThemeProvider = ({ children }) => {
+  const [theme, setTheme] = useState(() => {
+    const saved = localStorage.getItem('constellation-theme');
+    return saved || 'light';
+  });
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    localStorage.setItem('constellation-theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme(t => t === 'light' ? 'dark' : 'light');
+
+  return (
+    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+      {children}
+    </ThemeContext.Provider>
+  );
+};
 
 // Simple Button component
 const Button = ({ children, variant = 'default', size = 'default', className = '', ...props }) => {
   const baseStyles = 'inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50';
   
   const variants = {
-    default: 'bg-primary text-primary-foreground shadow hover:bg-primary/90',
-    outline: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
-    ghost: 'hover:bg-accent hover:text-accent-foreground'
+    default: 'bg-primary text-primary-foreground shadow hover:bg-primary/90 dark:bg-primary-dark',
+    outline: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground dark:border-gray-700',
+    ghost: 'hover:bg-accent hover:text-accent-foreground dark:hover:bg-gray-700'
   };
 
   const sizes = {
@@ -52,7 +83,12 @@ const Button = ({ children, variant = 'default', size = 'default', className = '
 
   return (
     <button
-      className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
+      className={`
+        ${baseStyles}
+        active:scale-95 
+        transition-all duration-150
+        hover:ring-2 hover:ring-offset-2
+      `}
       {...props}
     >
       {children}
@@ -64,7 +100,17 @@ const Button = ({ children, variant = 'default', size = 'default', className = '
 const Input = ({ className = '', ...props }) => {
   return (
     <input
-      className={`flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+      className={`
+        flex h-9 w-full rounded-md
+        border border-gray-200 dark:border-gray-700
+        bg-transparent
+        px-3 py-1 text-sm
+        shadow-sm transition-colors
+        placeholder:text-gray-500 dark:placeholder:text-gray-400
+        focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary
+        disabled:cursor-not-allowed disabled:opacity-50
+        ${className}
+      `}
       {...props}
     />
   );
@@ -74,7 +120,14 @@ const Input = ({ className = '', ...props }) => {
 const Card = ({ children, className = '', ...props }) => {
   return (
     <div
-      className={`rounded-xl border bg-card text-card-foreground shadow ${className}`}
+      className={`
+        rounded-xl border border-gray-200 dark:border-gray-800
+        bg-white dark:bg-gray-800
+        text-gray-900 dark:text-gray-100
+        shadow-sm hover:shadow-md
+        transition-all duration-200 ease-in-out
+        ${className}
+      `}
       {...props}
     >
       {children}
@@ -114,6 +167,15 @@ const SortableTask = ({ task, projectId, onToggle, onEdit, onAddSubtask, onAddTa
     transform: CSS.Transform.toString(transform),
     transition,
   };
+
+  // Add swipe gestures for common actions
+  useEffect(() => {
+    const hammer = new Hammer(taskRef.current);
+    hammer.on('swiperight', () => handleToggleTask(projectId, taskId));
+    hammer.on('swipeleft', () => handleDelete(projectId, taskId));
+    
+    return () => hammer.destroy();
+  }, []);
 
   return (
     <div ref={setNodeRef} style={style} className="group">
@@ -343,13 +405,21 @@ const App = () => {
   };
 
   const handleAddTask = (projectId) => {
+    const timeOfDay = new Date().getHours();
+    let defaultText = 'New task';
+    
+    // Smart defaults based on time
+    if (timeOfDay < 12) defaultText = 'Morning task';
+    else if (timeOfDay < 17) defaultText = 'Afternoon task';
+    else defaultText = 'Evening task';
+    
     setProjects(prev => prev.map(project => {
       if (project.id === projectId) {
         return {
           ...project,
           tasks: [...project.tasks, {
             id: Date.now().toString(),
-            text: 'New task',
+            text: defaultText,
             completed: false,
             subtasks: [],
             tags: [],
@@ -593,8 +663,20 @@ const App = () => {
   };
 
   const handleDeleteProject = (projectId) => {
-    if (!confirm('Are you sure you want to delete this project and all its tasks?')) return;
+    // Add undo capability
+    const projectCopy = projects.find(p => p.id === projectId);
     setProjects(prev => prev.filter(p => p.id !== projectId));
+    
+    // Show toast with undo option
+    toast({
+      title: "Project deleted",
+      description: "The project has been removed",
+      action: {
+        label: "Undo",
+        onClick: () => setProjects(prev => [...prev, projectCopy])
+      },
+      duration: 5000
+    });
   };
 
   const handleDeleteTask = (projectId, taskId) => {
@@ -616,13 +698,13 @@ const App = () => {
         return {
           ...project,
           tasks: project.tasks.map(task => {
-            if (taskId === task.id && !subtaskId) {
+            if (task.id === taskId && !subtaskId) {
               return {
                 ...task,
                 tags: task.tags.filter(tag => tag !== tagToRemove)
               };
             }
-            if (taskId === task.id && subtaskId) {
+            if (task.id === taskId && subtaskId) {
               return {
                 ...task,
                 subtasks: task.subtasks.map(subtask => {
@@ -644,108 +726,143 @@ const App = () => {
     }));
   };
 
+  // Add intelligent task suggestions based on patterns
+  const suggestNextAction = (project) => {
+    const timeOfDay = new Date().getHours();
+    const incompleteTasks = project.tasks.filter(t => !t.completed);
+    
+    if (timeOfDay < 12 && incompleteTasks.length > 0) {
+      return `Continue working on "${incompleteTasks[0].text}"`;
+    }
+    return "What would you like to accomplish?";
+  };
+
   return (
-    <div className="max-w-3xl mx-auto p-4">
-      <div className="mb-8 text-center">
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <h1 className="text-3xl font-bold">Constellation</h1>
-          <Moon className="w-6 h-6" />
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
+  );
+};
+
+// Move main content to new component
+const AppContent = () => {
+  const { theme, toggleTheme } = useContext(ThemeContext);
+  
+  return (
+    <div className="min-h-screen transition-colors duration-200 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+      <div className="max-w-3xl mx-auto p-4">
+        <div className="mb-8 text-center">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <h1 className="text-3xl font-bold">Constellation</h1>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleTheme}
+              className="rounded-full"
+              aria-label="Toggle theme"
+            >
+              {theme === 'light' ? (
+                <Moon className="w-5 h-5" />
+              ) : (
+                <Sun className="w-5 h-5" />
+              )}
+            </Button>
+          </div>
+          <p className="text-gray-500 dark:text-gray-400">Focus on what matters</p>
         </div>
-        <p className="text-gray-500">Focus on what matters</p>
-      </div>
+        
+        <div className="mb-6">
+          <form onSubmit={handleAddProject} className="flex gap-2">
+            <Input
+              value={projectInput}
+              onChange={e => setProjectInput(e.target.value)}
+              placeholder="New project name"
+              className="flex-1"
+            />
+            <Button type="submit">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Project
+            </Button>
+          </form>
+        </div>
 
-      <div className="mb-6">
-        <form onSubmit={handleAddProject} className="flex gap-2">
-          <Input
-            value={projectInput}
-            onChange={e => setProjectInput(e.target.value)}
-            placeholder="New project name"
-            className="flex-1"
-          />
-          <Button type="submit">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Project
-          </Button>
-        </form>
-      </div>
-
-      <div className="space-y-4">
-        {projects.map(project => (
-          <Card key={project.id} className="p-4">
-            <div className="mb-4">
-              <div className="flex justify-between items-center mb-4">
-                <EditableText
-                  value={project.name}
-                  onChange={(newName) => handleProjectNameChange(project.id, newName)}
-                  className="text-lg font-medium"
-                />
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleAddTask(project.id)}
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Task
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDeleteProject(project.id)}
-                    className="text-destructive hover:bg-destructive/10"
-                  >
-                    <Trash className="w-4 h-4" />
-                  </Button>
+        <div className="space-y-4">
+          {projects.length === 0 && (
+            <div className="text-center py-12">
+              <Moon className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+              <h2 className="text-xl font-medium mb-2">Create your first project</h2>
+              <p className="text-gray-500 mb-4">
+                Start organizing your work by creating a new project above
+              </p>
+              <Button onClick={() => document.querySelector('input').focus()}>
+                Get Started
+              </Button>
+            </div>
+          )}
+          {projects.map(project => (
+            <Card key={project.id} className="p-4">
+              <div className="mb-4">
+                <div className="flex justify-between items-center mb-4">
+                  <EditableText
+                    value={project.name}
+                    onChange={(newName) => handleProjectNameChange(project.id, newName)}
+                    className="text-lg font-medium"
+                  />
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleAddTask(project.id)}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Task
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteProject(project.id)}
+                      className="text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={project.tasks}
-                strategy={verticalListSortingStrategy}
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
               >
-                {project.tasks.map(task => (
-                  <SortableTask
-                    key={task.id}
-                    task={task}
-                    projectId={project.id}
-                    onToggle={(taskId, subtaskId) => 
-                      handleToggleTask(project.id, taskId, subtaskId)
-                    }
-                    onEdit={(taskId, subtaskId, newName) => 
-                      handleTaskNameChange(project.id, taskId, newName, subtaskId)
-                    }
-                    onAddSubtask={(taskId) => 
-                      handleAddSubtask(project.id, taskId)
-                    }
-                    onAddTag={(taskId, subtaskId) => 
-                      handleAddTag(project.id, taskId, subtaskId)
-                    }
-                    onAssign={(taskId, subtaskId) => 
-                      handleAssign(project.id, taskId, subtaskId)
-                    }
-                    onDelete={(taskId) => 
-                      handleDelete(project.id, taskId)
-                    }
-                    onRemoveTag={(tag) => 
-                      handleRemoveTag(project.id, taskId, tag)
-                    }
-                    onEditAssignee={(taskId) => 
-                      handleEditAssignee(project.id, taskId)
-                    }
-                  />
-                ))}
-              </SortableContext>
-            </DndContext>
-          </Card>
-        ))}
+                <SortableContext
+                  items={project.tasks}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <ProjectTasks tasks={project.tasks} />
+                </SortableContext>
+              </DndContext>
+            </Card>
+          ))}
+        </div>
       </div>
     </div>
+  );
+};
+
+const ProjectTasks = ({ tasks }) => {
+  return (
+    <VirtualizedList
+      width={width}
+      height={400}
+      rowCount={tasks.length}
+      rowHeight={60}
+      rowRenderer={({ index, style }) => (
+        <SortableTask
+          task={tasks[index]}
+          style={style}
+        />
+      )}
+    />
   );
 };
 
