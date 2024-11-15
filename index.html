@@ -262,9 +262,6 @@
       background: #1e293b;
       padding: 1rem 2rem;
       border-top: 1px solid #475569;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
     }
 
     .assignee-popup {
@@ -632,7 +629,7 @@
       top: 0;
       left: 0;
       height: 100%;
-      background: #a78bfa;
+      background: linear-gradient(to right, #a78bfa, #8b5cf6);
       transition: width 0.3s ease-in-out;
     }
 
@@ -905,8 +902,11 @@
     }
 
     function updateStats() {
-      const completed = document.querySelectorAll('.task-status.completed').length;
-      const total = document.querySelectorAll('.task-status').length;
+      // Get all visible (non-filtered) completed tasks
+      const completed = document.querySelectorAll('.task-status.completed:not([style*="display: none"])').length;
+      
+      // Get all visible (non-filtered) tasks
+      const total = document.querySelectorAll('.task-status:not([style*="display: none"])').length;
       
       // Update numbers
       document.getElementById('completed-count').textContent = completed;
