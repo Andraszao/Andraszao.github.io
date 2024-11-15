@@ -897,58 +897,60 @@
 
     function toggleStatus(status) {
       status.classList.toggle('completed');
-      throttledUpdateStats();
+      updateStats();
       document.dispatchEvent(new Event('taskEdited'));
     }
 
     function updateStats() {
-      // Get all visible (non-filtered) completed tasks
-      const completed = document.querySelectorAll('.task-status.completed:not([style*="display: none"])').length;
+      // Get all task groups that are currently visible
+      const visibleGroups = Array.from(document.querySelectorAll('.task-group'))
+          .filter(group => group.style.display !== 'none');
       
-      // Get all visible (non-filtered) tasks
-      const total = document.querySelectorAll('.task-status:not([style*="display: none"])').length;
+      // Initialize counters
+      let completed = 0;
+      let total = 0;
       
-      // Update numbers
+      // Count tasks in each visible group
+      visibleGroups.forEach(group => {
+          // Get all tasks in this group
+          const tasks = group.querySelectorAll('.task-status');
+          const completedInGroup = group.querySelectorAll('.task-status.completed').length;
+          
+          // Update group counter if it exists
+          const groupCounter = group.querySelector('.task-count');
+          if (groupCounter) {
+              groupCounter.textContent = `${completedInGroup}/${tasks.length}`;
+          }
+          
+          // Add to totals
+          completed += completedInGroup;
+          total += tasks.length;
+      });
+      
+      // Update the global counters
       document.getElementById('completed-count').textContent = completed;
       document.getElementById('total-count').textContent = total;
       
       // Update progress bar
-      const progressBar = document.querySelector('.progress-bar');
-      const progressTicks = document.querySelector('.progress-ticks');
       const progressFill = document.querySelector('.progress-fill');
-      
-      // Clear existing ticks
-      progressTicks.innerHTML = '';
-      
-      // Add ticks for total tasks
-      for (let i = 0; i < total; i++) {
-        const tick = document.createElement('div');
-        tick.className = 'progress-tick';
-        progressTicks.appendChild(tick);
+      if (progressFill) {
+          const percentage = total > 0 ? (completed / total) * 100 : 0;
+          progressFill.style.width = `${percentage}%`;
       }
       
-      // Update fill width
-      const percentage = total > 0 ? (completed / total) * 100 : 0;
-      progressFill.style.width = `${percentage}%`;
-      
-      // Add completion effect
-      if (completed === total && total > 0) {
-        progressBar.classList.add('completed');
-        progressFill.style.backgroundColor = '#4ade80'; // Change to green when complete
-      } else {
-        progressBar.classList.remove('completed');
-        progressFill.style.backgroundColor = '#a78bfa'; // Reset to default purple
+      // Update progress ticks
+      const progressTicks = document.querySelector('.progress-ticks');
+      if (progressTicks) {
+          progressTicks.innerHTML = '';
+          for (let i = 0; i < total; i++) {
+              const tick = document.createElement('div');
+              tick.className = 'progress-tick';
+              progressTicks.appendChild(tick);
+          }
       }
       
-      // Update category counts
-      document.querySelectorAll('.task-count').forEach(count => {
-        const group = count.closest('.task-group');
-        const groupCompleted = group.querySelectorAll('.task-status.completed').length;
-        const groupTotal = group.querySelectorAll('.task-status').length;
-        count.textContent = `${groupCompleted}/${groupTotal}`;
-      });
-
-      saveState();
+      // Log counts for debugging
+      console.log(`Stats updated - Completed: ${completed}, Total: ${total}`);
     }
 
     function showAssigneePopup(button, event) {
