@@ -714,9 +714,6 @@
     </div>
     <div class="toolbar">
       <button onclick="toggleEditMode()">Edit Mode</button>
-      <button onclick="toggleLeaderboard()" data-tooltip="View Leaderboard">
-        🏆 Leaderboard
-      </button>
       <button onclick="window.open('https://github.com/andraszao/andraszao.github.io/fork')" 
               data-tooltip="View & Fork Project">
         📋 Fork Project
@@ -727,18 +724,6 @@
       </button>
     </div>
   </header>
-
-  <div id="leaderboard-overlay" class="leaderboard-overlay">
-    <div class="leaderboard-content">
-      <div class="leaderboard-header">
-        <h2>🏆 Inch Takers Leaderboard</h2>
-        <button class="close-button" onclick="toggleLeaderboard()">×</button>
-      </div>
-      <div class="leaderboard-list">
-        <!-- Will be populated by JavaScript -->
-      </div>
-    </div>
-  </div>
 
   <div class="filter-box">
     <div class="assignee-filters" id="assignee-filters">
