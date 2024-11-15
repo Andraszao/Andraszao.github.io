@@ -114,6 +114,8 @@ const SortableTask = ({ task, projectId, onToggle, onEdit, onAddSubtask, onAddTa
           className="opacity-0 group-hover:opacity-40 hover:opacity-100 cursor-grab p-1" 
           {...attributes} 
           {...listeners}
+          aria-label="Drag to reorder task"
+          title="Drag to reorder task"
         >
           <GripVertical className="w-4 h-4" />
         </button>
@@ -122,8 +124,13 @@ const SortableTask = ({ task, projectId, onToggle, onEdit, onAddSubtask, onAddTa
           checked={task.completed}
           onChange={() => onToggle(task.id)}
           className="w-4 h-4"
+          id={`task-${task.id}`}
+          aria-label={`Mark "${task.text}" as ${task.completed ? 'incomplete' : 'complete'}`}
         />
-        <div className="flex-1 flex items-center gap-2">
+        <label 
+          htmlFor={`task-${task.id}`}
+          className="flex-1 flex items-center gap-2"
+        >
           <EditableText
             value={task.text}
             onChange={(newName) => onEdit(task.id, newName)}
@@ -146,6 +153,8 @@ const SortableTask = ({ task, projectId, onToggle, onEdit, onAddSubtask, onAddTa
               size="sm"
               onClick={() => onAddTag(task.id)}
               className="h-6 w-6 p-0"
+              aria-label="Add tag"
+              title="Add tag"
             >
               <TagIcon className="w-3 h-3" />
             </Button>
@@ -154,15 +163,18 @@ const SortableTask = ({ task, projectId, onToggle, onEdit, onAddSubtask, onAddTa
               size="sm"
               onClick={() => onAssign(task.id)}
               className="h-6 w-6 p-0"
+              aria-label="Assign task"
+              title="Assign task"
             >
               <User className="w-3 h-3" />
             </Button>
           </div>
-        </div>
+        </label>
         <Button
           variant="ghost"
           size="sm"
           onClick={() => onAddSubtask(task.id)}
+          aria-label="Add subtask"
         >
           <Plus className="w-4 h-4 mr-1" />
           Subtask
@@ -177,8 +189,13 @@ const SortableTask = ({ task, projectId, onToggle, onEdit, onAddSubtask, onAddTa
                 checked={subtask.completed}
                 onChange={() => onToggle(task.id, subtask.id)}
                 className="w-4 h-4"
+                id={`subtask-${subtask.id}`}
+                aria-label={`Mark subtask "${subtask.text}" as ${subtask.completed ? 'incomplete' : 'complete'}`}
               />
-              <div className="flex-1 flex items-center gap-2">
+              <label 
+                htmlFor={`subtask-${subtask.id}`}
+                className="flex-1 flex items-center gap-2"
+              >
                 <EditableText
                   value={subtask.text}
                   onChange={(newName) => onEdit(task.id, subtask.id, newName)}
@@ -201,6 +218,8 @@ const SortableTask = ({ task, projectId, onToggle, onEdit, onAddSubtask, onAddTa
                     size="sm"
                     onClick={() => onAddTag(task.id, subtask.id)}
                     className="h-6 w-6 p-0"
+                    aria-label="Add tag"
+                    title="Add tag"
                   >
                     <TagIcon className="w-3 h-3" />
                   </Button>
@@ -209,11 +228,13 @@ const SortableTask = ({ task, projectId, onToggle, onEdit, onAddSubtask, onAddTa
                     size="sm"
                     onClick={() => onAssign(task.id, subtask.id)}
                     className="h-6 w-6 p-0"
+                    aria-label="Assign subtask"
+                    title="Assign subtask"
                   >
                     <User className="w-3 h-3" />
                   </Button>
                 </div>
-              </div>
+              </label>
             </div>
           ))}
         </div>
