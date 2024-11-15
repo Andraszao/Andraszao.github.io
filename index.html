@@ -93,12 +93,13 @@
     }
 
     .task-group-header {
-      background: #1e293b;
+      background: linear-gradient(to right, #1e293b, #2d3748);
       padding: 0.75rem;
       cursor: pointer;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      border-bottom: 1px solid #475569;
     }
 
     .task-list {
@@ -227,14 +228,16 @@
     }
 
     .category-name {
-      outline: none;
-      padding: 0.25rem;
+      font-weight: 600;
+      color: #a78bfa;
+      font-size: 1.1rem;
+      padding: 0.25rem 0.5rem;
       border-radius: 4px;
+      transition: all 0.2s;
     }
 
-    .category-name:focus {
-      background: #2d3748;
-      color: #a78bfa;
+    .category-name:hover {
+      background: rgba(167, 139, 250, 0.1);
     }
 
     .delete-button {
@@ -452,16 +455,20 @@
       background: transparent;
       border: 1px solid #475569;
       color: #94a3b8;
-      padding: 0.25rem 0.5rem;
+      padding: 0.5rem 1rem;
       border-radius: 4px;
       cursor: pointer;
       font-size: 0.875rem;
       transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
     }
 
     .add-task-btn:hover {
       border-color: #a78bfa;
       color: #e2e8f0;
+      background: rgba(167, 139, 250, 0.1);
     }
 
     .project-name {
