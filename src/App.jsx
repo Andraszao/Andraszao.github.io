@@ -387,11 +387,22 @@ const EditableText = ({ value, onChange, className = '' }) => {
 
 // Main App Component
 const App = () => {
+  const { theme, toggleTheme } = useContext(ThemeContext);
+  
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
+  );
+};
+
+// Move main content to new component
+const AppContent = () => {
+  const { theme, toggleTheme } = useContext(ThemeContext);
   const [projects, setProjects] = useState(() => {
     const saved = localStorage.getItem('constellation-projects');
     return saved ? JSON.parse(saved) : [];
   });
-  
   const [projectInput, setProjectInput] = useState('');
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -728,17 +739,6 @@ const App = () => {
     return "What would you like to accomplish?";
   };
 
-  return (
-    <ThemeProvider>
-      <AppContent />
-    </ThemeProvider>
-  );
-};
-
-// Move main content to new component
-const AppContent = () => {
-  const { theme, toggleTheme } = useContext(ThemeContext);
-  
   return (
     <div className="min-h-screen transition-colors duration-200 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
       <Toaster position="bottom-right" toastOptions={{
