@@ -908,8 +908,13 @@
         return;
       }
 
+      const taskId = crypto.randomUUID(); // Generate ID immediately
+      const createdAt = new Date().toISOString(); // Generate timestamp
+      
       const newTask = document.createElement('div');
       newTask.className = 'task-item';
+      newTask.dataset.id = taskId; // Set the ID
+      newTask.dataset.createdAt = createdAt; // Set creation timestamp
       newTask.innerHTML = `
         <div class="task-status" onclick="toggleStatus(this)"></div>
         <div class="task-info">
@@ -927,7 +932,9 @@
     function addCategory() {
       const container = document.getElementById('task-container');
       const category = document.createElement('div');
+      const categoryId = crypto.randomUUID(); // Generate ID immediately
       category.className = 'task-group';
+      category.dataset.id = categoryId; // Set the ID
       category.innerHTML = `
         <div class="task-group-header">
           <div>
@@ -949,16 +956,30 @@
     }
 
     function deleteTask(button) {
-      button.closest('.task-item').remove();
+      const taskItem = button.closest('.task-item');
+      if (!taskItem) return;
+      
+      taskItem.remove();
       updateStats();
+      saveState().catch(error => {
+        console.error('Error deleting task:', error);
+        updateSyncStatus('Error deleting task ⚠️');
+      });
       document.dispatchEvent(new Event('taskDeleted'));
     }
 
     function deleteCategory(event, button) {
       event.stopPropagation();
       if (confirm('Delete this category and all its tasks?')) {
-        button.closest('.task-group').remove();
+        const category = button.closest('.task-group');
+        if (!category) return;
+        
+        category.remove();
         updateStats();
+        saveState().catch(error => {
+          console.error('Error deleting category:', error);
+          updateSyncStatus('Error deleting category ⚠️');
+        });
         document.dispatchEvent(new Event('categoryDeleted'));
       }
     }
@@ -1175,35 +1196,50 @@
     }
 
     function saveState() {
-      const state = {
-        projectName: document.querySelector('.project-name').textContent,
-        categories: Array.from(document.querySelectorAll('.task-group')).map(group => ({
-          id: group.dataset.id,
-          name: group.querySelector('.category-name').textContent,
-          isExpanded: group.querySelector('.task-list').style.display !== 'none',
-          tasks: Array.from(group.querySelectorAll('.task-item')).map(task => ({
-            id: task.dataset.id,
-            title: task.querySelector('.task-title').textContent,
-            completed: task.querySelector('.task-status').classList.contains('completed'),
-            assignee: task.querySelector('.task-assign').textContent,
-            createdAt: task.dataset.createdAt
-          }))
-        }))
-      };
+      try {
+        const state = {
+          projectName: document.querySelector('.project-name').textContent || 'Wish Upon',
+          categories: Array.from(document.querySelectorAll('.task-group')).map(group => {
+            // Validate category data
+            const categoryData = {
+              id: group.dataset.id,
+              name: group.querySelector('.category-name')?.textContent,
+              isExpanded: group.querySelector('.task-list')?.style.display !== 'none',
+              tasks: []
+            };
 
-      // Mark that we're making a local update
-      window.markLocalUpdate();
+            // Validate each task
+            const tasks = Array.from(group.querySelectorAll('.task-item')).map(task => {
+              if (!task.dataset.id) return null;
+              return {
+                id: task.dataset.id,
+                title: task.querySelector('.task-title')?.textContent || 'New Task',
+                completed: task.querySelector('.task-status')?.classList.contains('completed') || false,
+                assignee: task.querySelector('.task-assign')?.textContent || 'Unassigned',
+                createdAt: task.dataset.createdAt || new Date().toISOString()
+              };
+            }).filter(task => task !== null);
 
-      // Save to localStorage as backup
-      localStorage.setItem('taskState', JSON.stringify(state));
+            categoryData.tasks = tasks;
+            return categoryData;
+          }).filter(category => category.id && category.name)
+        };
 
-      // If Firebase is initialized, save to Firebase
-      if (window.db && window.firebaseRef && window.firebaseSet) {
-        const taskId = 'default-task-list';
-        const tasksRef = window.firebaseRef(window.db, `tasks/${taskId}`);
-        window.firebaseSet(tasksRef, state).catch(error => {
-          console.error('Error saving to Firebase:', error);
-        });
+        // Mark that we're making a local update
+        window.markLocalUpdate();
+
+        // Save to localStorage as backup
+        localStorage.setItem('taskState', JSON.stringify(state));
+
+        // If Firebase is initialized, save to Firebase
+        if (window.db && window.firebaseRef && window.firebaseSet) {
+          const taskId = 'default-task-list';
+          const tasksRef = window.firebaseRef(window.db, `tasks/${taskId}`);
+          return window.firebaseSet(tasksRef, state);
+        }
+      } catch (error) {
+        console.error('Error saving state:', error);
+        updateSyncStatus('Error saving changes ⚠️');
       }
     }
 
