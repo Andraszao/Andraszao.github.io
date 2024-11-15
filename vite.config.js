@@ -4,9 +4,7 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
-  base: '/',  // If using username.github.io repository
-  // OR
-  // base: '/repository-name/',  // If using any other repository name
+  base: '/Andraszao/Andraszao.github.io/',  // since you're using username.github.io
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
