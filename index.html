@@ -12,6 +12,7 @@
       font-family: system-ui, -apple-system, sans-serif;
       margin: 0;
       padding: 20px;
+      padding-bottom: calc(80px + 2rem);
     }
     
     header {
@@ -111,6 +112,8 @@
       margin-bottom: 0.5rem;
       background: #1e293b;
       transition: all 0.2s;
+      will-change: transform;
+      transform: translateZ(0);
     }
 
     .task-item:hover {
@@ -272,6 +275,7 @@
     @media (max-width: 640px) {
       body {
         padding: 10px;
+        padding-bottom: calc(100px + 2rem);
       }
 
       .toolbar {
@@ -685,6 +689,18 @@
         padding: 1rem;
       }
     }
+
+    /* Add will-change to optimize animations */
+    .task-item {
+      will-change: transform;
+      transform: translateZ(0);
+    }
+
+    /* Reduce paint operations during scrolling */
+    .task-list {
+      transform: translateZ(0);
+      backface-visibility: hidden;
+    }
   </style>
 <script>window.FIREBASE_CONFIG = '{"apiKey":"AIzaSyCXE9UyJeSjcFOOoDucZhoaQOvtn1yTHmk","authDomain":"taskmaster-6bfbd.firebaseapp.com","projectId":"taskmaster-6bfbd","storageBucket":"taskmaster-6bfbd.firebasestorage.app","messagingSenderId":"583197012210","appId":"1:583197012210:web:a2db1887d327b4ae4e606b","measurementId":"G-QP2LY3XC9L"}';</script></head>
 <body>
@@ -701,13 +717,9 @@
       <button onclick="toggleLeaderboard()" data-tooltip="View Leaderboard">
         🏆 Leaderboard
       </button>
-      <button onclick="window.open('https://github.com/andraszao/andraszao.github.io')" 
-              data-tooltip="View source code">
-        View Source
-      </button>
       <button onclick="window.open('https://github.com/andraszao/andraszao.github.io/fork')" 
-              data-tooltip="Create your own copy">
-        Fork Project
+              data-tooltip="View & Fork Project">
+        📋 Fork Project
       </button>
       <button onclick="window.open('https://ko-fi.com/inchwormgames')" 
               data-tooltip="Support us on Ko-fi">
@@ -819,7 +831,7 @@
 
     // Expose functions to global scope
     window.saveState = saveState;
-    window.debouncedSave = debounce(saveState, 1000);
+    window.debouncedSave = debounce(saveState, 2000);
 
     // Initialize Firebase and load state
     async function init() {
@@ -917,7 +929,7 @@
 
     function toggleStatus(status) {
       status.classList.toggle('completed');
-      updateStats();
+      throttledUpdateStats();
       document.dispatchEvent(new Event('taskEdited'));
     }
 
@@ -1292,6 +1304,21 @@
         updateLeaderboard();
       }
     });
+
+    // Add throttling for stats updates
+    function throttle(func, limit) {
+      let inThrottle;
+      return function(...args) {
+        if (!inThrottle) {
+          func.apply(this, args);
+          inThrottle = true;
+          setTimeout(() => inThrottle = false, limit);
+        }
+      }
+    }
+
+    // Throttle the updateStats function
+    const throttledUpdateStats = throttle(updateStats, 1000);
   </script>
 </body>
 </html>
