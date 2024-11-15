@@ -842,22 +842,16 @@
                 throw new Error('Firebase config not found');
             }
             
-            console.log('Parsing Firebase config...');
             const config = JSON.parse(window.FIREBASE_CONFIG);
-            
-            console.log('Initializing Firebase app...');
             const app = initializeApp(config);
-            
-            console.log('Getting database reference...');
             window.db = getDatabase(app);
-            
-            console.log('Setting up analytics...');
             const analytics = getAnalytics(app);
             
-            console.log('Firebase initialized successfully');
             updateSyncStatus('Connected to Cloud ☁️');
             
-            // Set up realtime listener
+            // Add a flag to prevent recursive updates
+            let isUpdating = false;
+            
             const taskId = 'default-task-list';
             const tasksRef = ref(window.db, `tasks/${taskId}`);
             
@@ -868,29 +862,30 @@
                 renderState(snapshot.val());
             } else {
                 console.log('No existing data in Firebase, loading default state');
-                // Load default state or localStorage backup
                 const savedState = localStorage.getItem('taskState');
                 if (savedState) {
                     const state = JSON.parse(savedState);
                     renderState(state);
-                    // Save localStorage data to Firebase
                     await set(tasksRef, state);
                 }
             }
 
-            // Then set up realtime listener for future changes
+            // Modified realtime listener with update prevention
             onValue(tasksRef, (snapshot) => {
+                if (isUpdating) return; // Skip if we're already updating
+                
                 const data = snapshot.val();
                 if (data) {
-                    console.log('Realtime update received:', data);
+                    console.log('Realtime update received');
+                    isUpdating = true;
                     renderState(data);
+                    isUpdating = false;
                 }
             });
 
         } catch (e) {
             console.error('Firebase initialization failed:', e);
             updateSyncStatus('Local Mode (Firebase Error) 💾');
-            // Load from localStorage if available
             const savedState = localStorage.getItem('taskState');
             if (savedState) {
                 renderState(JSON.parse(savedState));
@@ -1167,6 +1162,13 @@
     }
 
     function renderState(state) {
+      // Skip rendering if state hasn't changed
+      const currentState = JSON.stringify(state);
+      if (window.lastRenderedState === currentState) {
+          return;
+      }
+      window.lastRenderedState = currentState;
+
       // Ensure state exists with default values
       const safeState = {
         projectName: 'Wish Upon',
@@ -1241,9 +1243,11 @@
         });
       }
 
-      // Update stats after rendering
-      updateStats();
-      updateAssigneeFilters();
+      // Move updateStats call outside of the main rendering loop
+      requestAnimationFrame(() => {
+        updateStats();
+        updateAssigneeFilters();
+      });
     }
 
     // Add these after your existing event listeners
