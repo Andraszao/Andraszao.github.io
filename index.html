@@ -1258,6 +1258,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
     import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
+    import { enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
     // Make Firebase functions globally available
     window.firebaseRef = ref;
@@ -1285,21 +1286,44 @@
 
         updateSyncStatus('Connected to Cloud ☁️');
 
-        // Set up real-time sync
+        // Set up real-time sync with reconnection logic
         const taskId = 'default-task-list';
         const tasksRef = ref(window.db, `tasks/${taskId}`);
         
+        // Enable offline persistence
+        const connectedRef = ref(window.db, '.info/connected');
+        onValue(connectedRef, (snap) => {
+          if (snap.val() === true) {
+            updateSyncStatus('Connected to Cloud ☁️');
+          } else {
+            updateSyncStatus('Offline Mode 📱');
+          }
+        }, (error) => {
+          console.error('Connection error:', error);
+          updateSyncStatus('Connection Error ⚠️');
+        });
+
         onValue(tasksRef, (snapshot) => {
           const data = snapshot.val();
           if (data && (!window.lastLocalUpdate || Date.now() - window.lastLocalUpdate > 1000)) {
             renderState(data);
           }
+        }, (error) => {
+          console.error('Data sync error:', error);
+          updateSyncStatus('Sync Error ⚠️');
+          
+          // Load from localStorage as fallback
+          const savedState = localStorage.getItem('taskState');
+          if (savedState) {
+            renderState(JSON.parse(savedState));
+          }
         });
 
-        // Load initial state
-        const savedState = localStorage.getItem('taskState');
-        if (savedState) {
-          renderState(JSON.parse(savedState));
+        try {
+          await enableIndexedDbPersistence(window.db);
+          console.log('Offline persistence enabled');
+        } catch (err) {
+          console.error('Error enabling offline persistence:', err);
         }
 
       } catch (error) {
