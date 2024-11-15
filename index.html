@@ -620,27 +620,35 @@
     // Initialize Firebase and load state
     async function init() {
         try {
-            if (window.FIREBASE_CONFIG) {
-                const config = JSON.parse(window.FIREBASE_CONFIG);
-                const app = initializeApp(config);
-                window.db = getDatabase(app);
-                const analytics = getAnalytics(app);
-                console.log('Firebase initialized successfully');
-                
-                // Set up realtime listener
-                const tasksRef = ref(window.db, 'tasks');
-                onValue(tasksRef, (snapshot) => {
-                    const data = snapshot.val();
-                    if (data) {
-                        renderState(data);
-                    }
-                });
-            } else {
+            if (!window.FIREBASE_CONFIG) {
+                console.error('Firebase config is missing');
                 throw new Error('Firebase config not found');
             }
+            
+            console.log('Parsing Firebase config...');
+            const config = JSON.parse(window.FIREBASE_CONFIG);
+            
+            console.log('Initializing Firebase app...');
+            const app = initializeApp(config);
+            
+            console.log('Getting database reference...');
+            window.db = getDatabase(app);
+            
+            console.log('Setting up analytics...');
+            const analytics = getAnalytics(app);
+            
+            console.log('Firebase initialized successfully');
+            
+            // Set up realtime listener
+            const tasksRef = ref(window.db, 'tasks');
+            onValue(tasksRef, (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    renderState(data);
+                }
+            });
         } catch (e) {
-            console.warn('Failed to initialize Firebase:', e);
-            console.log('Falling back to localStorage');
+            console.error('Firebase initialization failed:', e);
             // Load from localStorage if available
             const savedState = localStorage.getItem('taskState');
             if (savedState) {
