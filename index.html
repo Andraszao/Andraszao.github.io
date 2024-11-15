@@ -723,6 +723,30 @@
         margin-bottom: 0.5rem;
         color: #94a3b8;
     }
+
+    /* Improve focus states for interactive elements */
+    .task-title:focus,
+    .category-name:focus,
+    .project-name:focus {
+        background: #2d3748;
+        color: #a78bfa;
+        outline: 2px solid #a78bfa;
+        outline-offset: 2px;
+    }
+
+    .toolbar button:focus-visible,
+    .add-task-btn:focus-visible,
+    .task-assign:focus-visible {
+        outline: 2px solid #a78bfa;
+        outline-offset: 2px;
+        border-color: #a78bfa;
+    }
+
+    /* Add keyboard focus styles */
+    .task-item:focus-within {
+        outline: 2px solid #a78bfa;
+        outline-offset: 2px;
+    }
   </style>
 <script>window.FIREBASE_CONFIG = '{"apiKey":"AIzaSyCXE9UyJeSjcFOOoDucZhoaQOvtn1yTHmk","authDomain":"taskmaster-6bfbd.firebaseapp.com","projectId":"taskmaster-6bfbd","storageBucket":"taskmaster-6bfbd.firebasestorage.app","messagingSenderId":"583197012210","appId":"1:583197012210:web:a2db1887d327b4ae4e606b","measurementId":"G-QP2LY3XC9L"}';</script></head>
 <body>
