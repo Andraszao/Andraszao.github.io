@@ -34,7 +34,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { VirtualizedList } from 'react-virtualized';
+import { FixedSizeList } from 'react-window';
 import { toast } from 'react-hot-toast';
 
 // Add theme context
@@ -818,7 +818,7 @@ const AppContent = () => {
                   items={project.tasks}
                   strategy={verticalListSortingStrategy}
                 >
-                  <ProjectTasks tasks={project.tasks} />
+                  <ProjectTasks tasks={project.tasks} projectId={project.id} />
                 </SortableContext>
               </DndContext>
             </Card>
@@ -829,20 +829,33 @@ const AppContent = () => {
   );
 };
 
-const ProjectTasks = ({ tasks }) => {
+const ProjectTasks = ({ tasks, projectId }) => {
+  const Row = ({ index, style }) => (
+    <div style={style}>
+      <SortableTask
+        task={tasks[index]}
+        projectId={projectId}
+        onToggle={(taskId) => handleToggleTask(projectId, taskId)}
+        onEdit={(taskId, newName) => handleTaskNameChange(projectId, taskId, newName)}
+        onAddSubtask={(taskId) => handleAddSubtask(projectId, taskId)}
+        onAddTag={(taskId) => handleAddTag(projectId, taskId)}
+        onAssign={(taskId) => handleAssign(projectId, taskId)}
+        onDelete={(taskId) => handleDeleteTask(projectId, taskId)}
+        onRemoveTag={(taskId, tag) => handleRemoveTag(projectId, taskId, tag)}
+        onEditAssignee={(taskId) => handleEditAssignee(projectId, taskId)}
+      />
+    </div>
+  );
+
   return (
-    <VirtualizedList
-      width={width}
+    <FixedSizeList
       height={400}
-      rowCount={tasks.length}
-      rowHeight={60}
-      rowRenderer={({ index, style }) => (
-        <SortableTask
-          task={tasks[index]}
-          style={style}
-        />
-      )}
-    />
+      width="100%"
+      itemCount={tasks.length}
+      itemSize={60}
+    >
+      {Row}
+    </FixedSizeList>
   );
 };
 
