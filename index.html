@@ -620,23 +620,32 @@
     // Initialize Firebase and load state
     async function init() {
         try {
-            // Try to initialize Firebase with injected config
             if (window.FIREBASE_CONFIG) {
-                const app = initializeApp(JSON.parse(window.FIREBASE_CONFIG));
+                const config = JSON.parse(window.FIREBASE_CONFIG);
+                const app = initializeApp(config);
                 window.db = getDatabase(app);
                 const analytics = getAnalytics(app);
                 console.log('Firebase initialized successfully');
+                
+                // Set up realtime listener
+                const tasksRef = ref(window.db, 'tasks');
+                onValue(tasksRef, (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        renderState(data);
+                    }
+                });
             } else {
                 throw new Error('Firebase config not found');
             }
         } catch (e) {
             console.warn('Failed to initialize Firebase:', e);
             console.log('Falling back to localStorage');
-        }
-        
-        // Load initial state (you'll need to implement this)
-        if (typeof loadState === 'function') {
-            loadState();
+            // Load from localStorage if available
+            const savedState = localStorage.getItem('taskState');
+            if (savedState) {
+                renderState(JSON.parse(savedState));
+            }
         }
     }
 
