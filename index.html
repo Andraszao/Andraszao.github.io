@@ -766,49 +766,6 @@
   </div>
 
   <script>
-    // Utility functions
-    function debounce(func, wait) {
-      let timeout;
-      return function executedFunction(...args) {
-        const later = () => {
-          clearTimeout(timeout);
-          func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-      };
-    }
-
-    // Replace saveState with state manager version
-    function saveState() {
-      if (window.isProcessingRemoteUpdate) return;
-      saveToFirebase('manual-save');
-    }
-
-    // Make sure updateSyncStatus is globally available
-    function updateSyncStatus(message) {
-      const statusEl = document.getElementById('sync-status');
-      if (statusEl) {
-        statusEl.textContent = message;
-        statusEl.style.opacity = '1';
-        setTimeout(() => {
-          statusEl.style.opacity = '0.5';
-        }, 2000);
-      }
-    }
-  </script>
-
-  <script type="module">
-    // Your Firebase config (replace with your actual config)
-    window.FIREBASE_CONFIG = JSON.stringify({
-      // Your Firebase configuration object
-    });
-
-    // Firebase initialization
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
-
     // Define the functions first
     function debounce(func, wait) {
         let timeout;
@@ -821,38 +778,13 @@
             timeout = setTimeout(later, wait);
         };
     }
+  </script>
 
-    // Centralized Firebase save function with state manager
-    async function saveToFirebase(changeType) {
-      if (window.isProcessingRemoteUpdate) return;
-
-      const state = taskManager.getState();
-      const timestamp = new Date().toISOString();
-      window.lastLocalUpdate = timestamp;
-      
-      // Convert state manager format to Firebase format
-      const firebaseData = {
-        projectName: state.projectName,
-        categories: Array.from(state.categories.values()),
-        tasks: Array.from(state.tasks.values()),
-        lastModified: timestamp,
-        changeType,
-        version: '1.0'
-      };
-      
-      try {
-        if (window.db) {
-          const taskId = 'default-task-list';
-          await set(ref(window.db, `tasks/${taskId}`), firebaseData);
-          console.log(`Saved to Firebase: ${changeType}`);
-          updateSyncStatus('Synced ☁️');
-        }
-      } catch (e) {
-        console.error('Failed to save to Firebase:', e);
-        localStorage.setItem('taskState', JSON.stringify(firebaseData));
-        updateSyncStatus('Saved Locally 💾');
-      }
-    }
+  <script type="module">
+    // Firebase initialization - config should be injected during deployment
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
 
     // Setup action handlers with state manager integration
     function setupActionHandlers() {
@@ -876,16 +808,6 @@
       document.addEventListener('contentEdit', debouncedTextSave);
     }
 
-    // Add this new function
-    function updateSyncStatus(message) {
-        const statusEl = document.getElementById('sync-status');
-        statusEl.textContent = message;
-        // Fade out after 2 seconds
-        setTimeout(() => {
-            statusEl.style.opacity = '0.5';
-        }, 2000);
-    }
-
     // Expose functions to global scope
     window.saveState = saveState;
     window.debouncedSave = debounce(saveState, 5000);
@@ -893,12 +815,6 @@
     // Initialize Firebase and load state
     async function init() {
         try {
-            if (!window.FIREBASE_CONFIG) {
-                console.error('Firebase config is missing');
-                updateSyncStatus('Local Mode (No Firebase Config) 💾');
-                throw new Error('Firebase config not found');
-            }
-            
             const config = JSON.parse(window.FIREBASE_CONFIG);
             const app = initializeApp(config);
             window.db = getDatabase(app);
