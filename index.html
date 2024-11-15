@@ -949,15 +949,27 @@
     }
 
     function handleAssigneeInput(event) {
-      if (event.key === 'Enter') {
+      if (event.key === 'Enter' || event.key === 'Escape') {
         const value = event.target.value.trim();
-        if (activeAssignButton && value) {
-          activeAssignButton.textContent = value;
-          activeAssignButton.classList.add('assigned');
-        } else if (activeAssignButton) {
-          activeAssignButton.textContent = 'Unassigned';
-          activeAssignButton.classList.remove('assigned');
+        
+        if (event.key === 'Escape') {
+          // Cancel assignment
+          document.querySelector('.assignee-popup').style.display = 'none';
+          activeAssignButton = null;
+          return;
         }
+        
+        if (activeAssignButton) {
+          if (value) {
+            activeAssignButton.textContent = value;
+            activeAssignButton.classList.add('assigned');
+          } else {
+            // Explicitly handle empty value as unassigned
+            activeAssignButton.textContent = 'Unassigned';
+            activeAssignButton.classList.remove('assigned');
+          }
+        }
+        
         document.querySelector('.assignee-popup').style.display = 'none';
         activeAssignButton = null;
         saveState();
@@ -1030,6 +1042,7 @@
       
       taskItem.remove();
       updateStats();
+      updateAssigneeFilters();
       saveState().catch(error => {
         console.error('Error deleting task:', error);
         updateSyncStatus('Error deleting task ⚠️');
@@ -1102,8 +1115,11 @@
 
     function updateAssigneeFilters() {
       const assignees = new Set(['all']);
+      const visibleTasks = Array.from(document.querySelectorAll('.task-item'))
+        .filter(task => task.style.display !== 'none');
       
-      document.querySelectorAll('.task-assign').forEach(assign => {
+      visibleTasks.forEach(task => {
+        const assign = task.querySelector('.task-assign');
         const assignee = assign.textContent.trim();
         if (assignee !== 'Unassigned') {
           assignees.add(assignee);
@@ -1111,11 +1127,14 @@
       });
 
       const filterContainer = document.getElementById('assignee-filters');
+      const currentFilter = Array.from(filterContainer.querySelectorAll('.assignee-filter'))
+        .find(btn => btn.classList.contains('active'))?.dataset.assignee || 'all';
+      
       filterContainer.innerHTML = '';
       
       assignees.forEach(assignee => {
         const button = document.createElement('button');
-        button.className = 'assignee-filter' + (assignee === 'all' ? ' active' : '');
+        button.className = 'assignee-filter' + (assignee === currentFilter ? ' active' : '');
         button.setAttribute('data-assignee', assignee);
         button.textContent = assignee === 'all' ? 'All' : assignee;
         button.onclick = () => filterTasks(assignee);
