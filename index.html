@@ -385,6 +385,25 @@
     .loading {
       opacity: 0.6;
       pointer-events: none;
+      position: relative;
+    }
+    
+    .loading::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 20px;
+      height: 20px;
+      margin: -10px 0 0 -10px;
+      border: 2px solid #a78bfa;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: loading 0.6s linear infinite;
+    }
+
+    @keyframes loading {
+      to { transform: rotate(360deg); }
     }
     
     /* Add keyboard focus styles */
@@ -926,7 +945,7 @@
   </style>
 </head>
 <body>
-  <header>
+  <header role="banner">
     <div class="logo">
       <img src="logo.png" alt="Project Logo">
       <span class="project-name" contenteditable="false" 
@@ -948,20 +967,22 @@
     </div>
   </header>
 
-  <div class="filter-box">
-    <div class="assignee-filters" id="assignee-filters">
-      <button class="assignee-filter active" data-assignee="all">All</button>
-      <input type="search" 
-             placeholder="Search tasks..." 
-             class="task-search"
-             onkeyup="filterTasksBySearch(this.value)">
+  <main role="main">
+    <div class="filter-box" role="search">
+      <div class="assignee-filters" id="assignee-filters">
+        <button class="assignee-filter active" data-assignee="all">All</button>
+        <input type="search" 
+               placeholder="Search tasks..." 
+               class="task-search"
+               onkeyup="filterTasksBySearch(this.value)">
+      </div>
     </div>
-  </div>
 
-  <div id="task-container"></div>
-  <div class="add-category" onclick="addCategory()">+ Add Category</div>
+    <div id="task-container" role="list"></div>
+    <div class="add-category" onclick="addCategory()">+ Add Category</div>
+  </main>
 
-  <div class="stats">
+  <footer class="stats" role="contentinfo">
     <div class="progress-container">
       <div class="progress-bar">
         <div class="progress-ticks"></div>
@@ -971,7 +992,7 @@
         <span id="completed-count">0</span> / <span id="total-count">0</span> inches taken
       </div>
     </div>
-  </div>
+  </footer>
 
   <div class="assignee-popup">
     <input type="text" placeholder="Enter assignee name" onkeydown="handleAssigneeInput(event)">
@@ -1148,45 +1169,57 @@ task"></textarea>
       }
     }
 
-    function addTask(categoryEl) {
-      if (!categoryEl) {
-        alert('Please select a category first');
-        return;
+    function safeOperation(operation, fallback = null) {
+      try {
+        return operation();
+      } catch (error) {
+        console.error('Operation failed:', error);
+        updateSyncStatus('Operation failed ⚠️');
+        return fallback;
       }
-      
-      const taskList = categoryEl.querySelector('.task-list');
-      if (!taskList) {
-        console.error('Task list not found in category');
-        return;
-      }
+    }
 
-      const taskId = crypto.randomUUID();
-      const createdAt = new Date().toISOString();
-      
-      const newTask = document.createElement('div');
-      newTask.className = 'task-item';
-      newTask.dataset.id = taskId;
-      newTask.dataset.createdAt = createdAt;
-      newTask.draggable = true;
-      
-      newTask.innerHTML = `
-        <div class="task-status" onclick="toggleStatus(this)"></div>
-        <div class="task-info">
-          <div class="task-title" contenteditable="${editMode}">New Task</div>
-          <div class="task-tags">
-            ${editMode ? '<button class="add-tag-btn" onclick="showTagInput(this)">+</button>' : ''}
+    function addTask(categoryEl) {
+      return safeOperation(() => {
+        if (!categoryEl) {
+          alert('Please select a category first');
+          return;
+        }
+        
+        const taskList = categoryEl.querySelector('.task-list');
+        if (!taskList) {
+          console.error('Task list not found in category');
+          return;
+        }
+
+        const taskId = crypto.randomUUID();
+        const createdAt = new Date().toISOString();
+        
+        const newTask = document.createElement('div');
+        newTask.className = 'task-item';
+        newTask.dataset.id = taskId;
+        newTask.dataset.createdAt = createdAt;
+        newTask.draggable = true;
+        
+        newTask.innerHTML = `
+          <div class="task-status" onclick="toggleStatus(this)"></div>
+          <div class="task-info">
+            <div class="task-title" contenteditable="${editMode}">New Task</div>
+            <div class="task-tags">
+              ${editMode ? '<button class="add-tag-btn" onclick="showTagInput(this)">+</button>' : ''}
+            </div>
+            <button class="task-assign" onclick="showAssigneePopup(this, event)">Unassigned</button>
           </div>
-          <button class="task-assign" onclick="showAssigneePopup(this, event)">Unassigned</button>
-        </div>
-        <span class="delete-button" onclick="deleteTask(this)">×</span>
-      `;
-      
-      newTask.addEventListener('dragstart', handleDragStart);
-      newTask.addEventListener('dragend', handleDragEnd);
-      
-      taskList.appendChild(newTask);
-      updateStats();
-      document.dispatchEvent(new Event('taskAdded'));
+          <span class="delete-button" onclick="deleteTask(this)">×</span>
+        `;
+        
+        newTask.addEventListener('dragstart', handleDragStart);
+        newTask.addEventListener('dragend', handleDragEnd);
+        
+        taskList.appendChild(newTask);
+        updateStats();
+        document.dispatchEvent(new Event('taskAdded'));
+      });
     }
 
     function handleDragStart(e) {
@@ -1496,6 +1529,7 @@ task"></textarea>
     }
 
     function saveState() {
+      performance.start('saveState');
       try {
         const state = {
           projectName: document.querySelector('.project-name').textContent || 'Wish Upon',
@@ -1532,6 +1566,7 @@ task"></textarea>
         console.error('Error saving state:', error);
         updateSyncStatus('Error saving changes ⚠');
       }
+      performance.end('saveState');
     }
 
     function updateSyncStatus(message) {
@@ -1792,6 +1827,73 @@ task"></textarea>
         toggleTextEditor();
       }
     }
+
+    function initializeEventDelegation() {
+      document.getElementById('task-container').addEventListener('click', e => {
+        const target = e.target;
+        
+        if (target.matches('.task-status')) {
+          e.stopPropagation();
+          toggleStatus(target);
+        }
+        else if (target.matches('.delete-button')) {
+          e.stopPropagation();
+          if (target.closest('.task-item')) {
+            deleteTask(target);
+          } else {
+            deleteCategory(e, target);
+          }
+        }
+        else if (target.matches('.task-assign')) {
+          e.stopPropagation();
+          showAssigneePopup(target, e);
+        }
+      });
+    }
+
+    function initializeKeyboardNavigation() {
+      document.addEventListener('keydown', e => {
+        const activeElement = document.activeElement;
+        
+        if (activeElement.classList.contains('task-item')) {
+          switch(e.key) {
+            case 'ArrowDown':
+              e.preventDefault();
+              const nextTask = activeElement.nextElementSibling;
+              if (nextTask) nextTask.focus();
+              break;
+            case 'ArrowUp':
+              e.preventDefault();
+              const prevTask = activeElement.previousElementSibling;
+              if (prevTask) prevTask.focus();
+              break;
+            case 'Enter':
+            case ' ':
+              e.preventDefault();
+              const status = activeElement.querySelector('.task-status');
+              if (status) toggleStatus(status);
+              break;
+          }
+        }
+      });
+    }
+
+    function initializeTaskObserver() {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.remove('deferred');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, {
+        rootMargin: '50px'
+      });
+
+      document.querySelectorAll('.task-group').forEach(group => {
+        observer.observe(group);
+      });
+    }
   </script>
 
   <script type="module">
@@ -1877,6 +1979,59 @@ task"></textarea>
 
     // Initialize when DOM is ready
     window.addEventListener('DOMContentLoaded', init);
+  </script>
+
+  <script>
+    const features = {
+      dragAndDrop: 'draggable' in document.createElement('div'),
+      crypto: window.crypto && 'randomUUID' in crypto,
+      localStorage: (() => {
+        try {
+          localStorage.setItem('test', 'test');
+          localStorage.removeItem('test');
+          return true;
+        } catch (e) {
+          return false;
+        }
+      })()
+    };
+  </script>
+
+  <script>
+    const undoStack = {
+      stack: [],
+      maxSize: 50,
+      
+      push(state) {
+        this.stack.push(JSON.stringify(state));
+        if (this.stack.length > this.maxSize) {
+          this.stack.shift();
+        }
+        sessionStorage.setItem('undoStack', JSON.stringify(this.stack));
+      },
+      
+      pop() {
+        const state = this.stack.pop();
+        sessionStorage.setItem('undoStack', JSON.stringify(this.stack));
+        return state ? JSON.parse(state) : null;
+      }
+    };
+  </script>
+
+  <script>
+    const performance = {
+      marks: {},
+      start(operation) {
+        this.marks[operation] = performance.now();
+      },
+      end(operation) {
+        if (this.marks[operation]) {
+          const duration = performance.now() - this.marks[operation];
+          console.debug(`${operation} took ${duration.toFixed(2)}ms`);
+          delete this.marks[operation];
+        }
+      }
+    };
   </script>
 </body>
 </html>
