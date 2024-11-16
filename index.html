@@ -1205,15 +1205,6 @@ task"></textarea>
     }
 
     function addCategory() {
-      // Add category limit check
-      const existingCategories = document.querySelectorAll('.task-group').length;
-      const CATEGORY_LIMIT = 10; // Reasonable limit for visualization
-      
-      if (existingCategories >= CATEGORY_LIMIT) {
-        alert(`Maximum ${CATEGORY_LIMIT} categories allowed for optimal organization`);
-        return;
-      }
-      
       const container = document.getElementById('task-container');
       const category = document.createElement('div');
       const categoryId = crypto.randomUUID();
