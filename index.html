@@ -1833,11 +1833,35 @@ task"></textarea>
 
     function toggleTextEditor() {
       const overlay = document.getElementById('text-editor-overlay');
-      overlay.style.display = overlay.style.display === 'none' ? 'block' : 'none';
+      const editor = document.getElementById('text-editor');
       
-      if (overlay.style.display === 'block') {
-        // If opening, populate with current tasks if export button is clicked
-        document.getElementById('text-editor').focus();
+      if (overlay.style.display === 'none' || !overlay.style.display) {
+        // Generate text representation of current tasks
+        let textContent = '';
+        document.querySelectorAll('.task-group').forEach(category => {
+          const categoryName = category.querySelector('.category-name').textContent;
+          const categoryLabel = category.querySelector('.category-label').textContent;
+          textContent += `${categoryLabel}:${categoryName}::\n`;
+          
+          category.querySelectorAll('.task-item').forEach(task => {
+            const taskTitle = task.querySelector('.task-title').textContent;
+            const isCompleted = task.querySelector('.task-status').classList.contains('completed');
+            const assignee = task.querySelector('.task-assign').textContent;
+            
+            // Format task with its properties
+            let taskLine = isCompleted ? '✓ ' : '';
+            taskLine += taskTitle;
+            if (assignee !== 'Unassigned') taskLine += ` @${assignee}`;
+            textContent += taskLine + '\n';
+          });
+          textContent += '\n';
+        });
+        
+        editor.value = textContent;
+        overlay.style.display = 'block';
+        editor.focus();
+      } else {
+        overlay.style.display = 'none';
       }
     }
 
