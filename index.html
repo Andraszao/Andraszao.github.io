@@ -2192,6 +2192,52 @@ task"></textarea>
         });
       }
     });
+
+    function updateTaskFeatures(task) {
+      // Due dates feature
+      const dueDateElement = task.querySelector('.task-due-date');
+      if (activeFeatures.dueDates) {
+        if (!dueDateElement) {
+          const dueDate = document.createElement('input');
+          dueDate.type = 'date';
+          dueDate.className = 'task-due-date';
+          task.querySelector('.task-info').appendChild(dueDate);
+        }
+      } else if (dueDateElement) {
+        dueDateElement.remove();
+      }
+
+      // Priority feature
+      const priorityElement = task.querySelector('.task-priority');
+      if (activeFeatures.priority) {
+        if (!priorityElement) {
+          const priority = document.createElement('select');
+          priority.className = 'task-priority';
+          priority.innerHTML = `
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          `;
+          task.querySelector('.task-info').appendChild(priority);
+        }
+      } else if (priorityElement) {
+        priorityElement.remove();
+      }
+
+      // Notes feature
+      const notesElement = task.querySelector('.task-notes');
+      if (activeFeatures.notes) {
+        if (!notesElement) {
+          const notes = document.createElement('div');
+          notes.className = 'task-notes';
+          notes.contentEditable = 'true';
+          notes.placeholder = 'Add notes...';
+          task.appendChild(notes);
+        }
+      } else if (notesElement) {
+        notesElement.remove();
+      }
+    }
   </script>
 
   <script type="module">
@@ -2320,11 +2366,11 @@ task"></textarea>
     const performance = {
       marks: {},
       start(operation) {
-        this.marks[operation] = performance.now();
+        this.marks[operation] = Date.now();
       },
       end(operation) {
         if (this.marks[operation]) {
-          const duration = performance.now() - this.marks[operation];
+          const duration = Date.now() - this.marks[operation];
           console.debug(`${operation} took ${duration.toFixed(2)}ms`);
           delete this.marks[operation];
         }
