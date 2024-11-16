@@ -1708,7 +1708,7 @@ task"></textarea>
           const title = task.querySelector('.task-title').textContent;
           const isCompleted = task.querySelector('.task-status').classList.contains('completed');
           const assignee = task.querySelector('.task-assign').textContent;
-          text += `${isCompleted ? '✓ ' : ''}${title}${assignee !== 'Unassigned' ? ` @${assignee}` : ''}\n`;
+          text += `${isCompleted ? 'x ' : ''}${title}${assignee !== 'Unassigned' ? ` @${assignee}` : ''}\n`;
         });
         text += '\n';
       });
@@ -1721,7 +1721,6 @@ task"></textarea>
       const lines = text.split('\n');
       let currentCategory = null;
       
-      // Clear existing tasks if confirmed
       if (confirm('This will replace all existing tasks. Continue?')) {
         document.getElementById('task-container').innerHTML = '';
         
@@ -1729,12 +1728,10 @@ task"></textarea>
           line = line.trim();
           if (!line) return;
           
-          // Check for category definition
           if (line.includes('::')) {
             const [categoryDef] = line.split('::');
             const [label, name] = categoryDef.split(':');
             
-            // Create new category
             const category = document.createElement('div');
             category.className = 'task-group';
             category.dataset.id = crypto.randomUUID();
@@ -1759,17 +1756,19 @@ task"></textarea>
             currentCategory = category;
             
           } else if (currentCategory && line) {
-            // Parse task line
-            let completed = line.startsWith('✓ ');
-            let title = completed ? line.substring(2) : line;
+            let completed = line.startsWith('✓ ') || 
+                           line.startsWith('x ') || 
+                           line.startsWith('* ') ||
+                           line.startsWith('- ') ||
+                           line.toLowerCase().startsWith('done ');
+            
+            let title = completed ? line.substring(line.indexOf(' ') + 1) : line;
             let assignee = 'Unassigned';
             
-            // Check for assignee
             if (title.includes(' @')) {
               [title, assignee] = title.split(' @');
             }
             
-            // Add task to current category
             const taskList = currentCategory.querySelector('.task-list');
             const taskEl = document.createElement('div');
             taskEl.className = 'task-item';
