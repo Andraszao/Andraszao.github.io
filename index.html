@@ -2,6 +2,7 @@
 <html>
 <head>
   <title>Wish Upon - Development Map</title>
+  <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64,">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Wish Upon - Development Task Management System">
@@ -1169,7 +1170,11 @@ task"></textarea>
 
     function toggleGroup(header) {
       const list = header.nextElementSibling;
-      list.style.display = list.style.display === 'none' ? 'block' : 'none';
+      const isExpanded = list.style.display !== 'none';
+      list.style.display = isExpanded ? 'none' : 'block';
+      
+      // Save the state after toggling
+      window.debouncedSave();
     }
 
     function toggleStatus(status) {
@@ -1533,6 +1538,9 @@ task"></textarea>
           categoryEl.className = 'task-group';
           categoryEl.dataset.id = category.id || crypto.randomUUID();
           
+          // Update this section to handle isExpanded properly
+          const isExpanded = category.isExpanded === undefined ? false : category.isExpanded; // Default to collapsed
+          
           categoryEl.innerHTML = `
             <div class="task-group-header" onclick="toggleGroup(this)">
               <div>
@@ -1550,7 +1558,7 @@ task"></textarea>
                 <span class="delete-button" onclick="deleteCategory(event, this)">×</span>
               </div>
             </div>
-            <div class="task-list" style="display: ${category.isExpanded ? 'block' : 'none'}"></div>
+            <div class="task-list" style="display: ${isExpanded ? 'block' : 'none'}"></div>
           `;
           
           container.appendChild(categoryEl);
@@ -2009,7 +2017,13 @@ task"></textarea>
     function toggleSettings(event) {
       event.stopPropagation();
       const popup = document.getElementById('settings-popup');
-      popup.style.display = popup.style.display === 'none' ? 'block' : 'none';
+      if (!popup) {
+        console.error('Settings popup element not found');
+        return;
+      }
+      const currentDisplay = window.getComputedStyle(popup).display;
+      popup.style.display = currentDisplay === 'none' ? 'block' : 'none';
+      console.log('Settings toggled:', popup.style.display); // Debug log
     }
 
     function toggleFeature(feature, enabled) {
