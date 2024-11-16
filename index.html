@@ -864,6 +864,65 @@
       color: #94a3b8;
       font-style: italic;
     }
+
+    .text-editor-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(15, 23, 42, 0.9);
+      z-index: 1000;
+      padding: 2rem;
+    }
+
+    .text-editor-content {
+      max-width: 800px;
+      margin: 0 auto;
+      background: #1e293b;
+      border-radius: 8px;
+      border: 1px solid #475569;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 4rem);
+    }
+
+    .text-editor-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem;
+      background: #2d3748;
+      border-bottom: 1px solid #475569;
+    }
+
+    .text-editor-header h2 {
+      margin: 0;
+      color: #a78bfa;
+    }
+
+    #text-editor {
+      flex: 1;
+      background: #0f172a;
+      color: #e2e8f0;
+      border: none;
+      padding: 1rem;
+      font-family: monospace;
+      font-size: 14px;
+      resize: none;
+      outline: none;
+    }
+
+    .text-editor-footer {
+      padding: 1rem;
+      display: flex;
+      gap: 1rem;
+      justify-content: flex-end;
+      background: #2d3748;
+      border-top: 1px solid #475569;
+    }
   </style>
 <script>window.FIREBASE_CONFIG = '{"apiKey":"AIzaSyCXE9UyJeSjcFOOoDucZhoaQOvtn1yTHmk","authDomain":"taskmaster-6bfbd.firebaseapp.com","projectId":"taskmaster-6bfbd","storageBucket":"taskmaster-6bfbd.firebasestorage.app","messagingSenderId":"583197012210","appId":"1:583197012210:web:a2db1887d327b4ae4e606b","measurementId":"G-QP2LY3XC9L"}';</script></head>
 <body>
@@ -877,6 +936,7 @@
     </div>
     <div class="toolbar">
       <button onclick="toggleEditMode()">Edit Mode</button>
+      <button onclick="toggleTextEditor()">TXT Mode</button>
       <button onclick="window.open('https://github.com/andraszao/andraszao.github.io/fork')" 
               data-tooltip="View & Fork Project">
         📋 Fork Project
@@ -915,6 +975,28 @@
 
   <div class="assignee-popup">
     <input type="text" placeholder="Enter assignee name" onkeydown="handleAssigneeInput(event)">
+  </div>
+
+  <div id="text-editor-overlay" class="text-editor-overlay">
+    <div class="text-editor-content">
+      <div class="text-editor-header">
+        <h2>Quick Text Entry</h2>
+        <button onclick="toggleTextEditor()">×</button>
+      </div>
+      <textarea id="text-editor" placeholder="Enter tasks in format:
+tag:category::
+task
+task
+task
+
+tag:another-category::
+task
+task"></textarea>
+      <div class="text-editor-footer">
+        <button onclick="parseAndSaveTasks()">Save Tasks</button>
+        <button onclick="exportToText()">Export Current</button>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -1609,6 +1691,116 @@
         ghostClass: 'category-ghost',
         onEnd: () => saveState()
       });
+    }
+
+    function toggleTextEditor() {
+      const overlay = document.getElementById('text-editor-overlay');
+      overlay.style.display = overlay.style.display === 'none' ? 'block' : 'none';
+      
+      if (overlay.style.display === 'block') {
+        // If opening, populate with current tasks if export button is clicked
+        document.getElementById('text-editor').focus();
+      }
+    }
+
+    function exportToText() {
+      const categories = document.querySelectorAll('.task-group');
+      let text = '';
+      
+      categories.forEach(category => {
+        const categoryName = category.querySelector('.category-name').textContent;
+        const categoryLabel = category.querySelector('.category-label').textContent;
+        text += `${categoryLabel}:${categoryName}::\n`;
+        
+        const tasks = category.querySelectorAll('.task-item');
+        tasks.forEach(task => {
+          const title = task.querySelector('.task-title').textContent;
+          const isCompleted = task.querySelector('.task-status').classList.contains('completed');
+          const assignee = task.querySelector('.task-assign').textContent;
+          text += `${isCompleted ? '✓ ' : ''}${title}${assignee !== 'Unassigned' ? ` @${assignee}` : ''}\n`;
+        });
+        text += '\n';
+      });
+      
+      document.getElementById('text-editor').value = text;
+    }
+
+    function parseAndSaveTasks() {
+      const text = document.getElementById('text-editor').value;
+      const lines = text.split('\n');
+      let currentCategory = null;
+      
+      // Clear existing tasks if confirmed
+      if (confirm('This will replace all existing tasks. Continue?')) {
+        document.getElementById('task-container').innerHTML = '';
+        
+        lines.forEach(line => {
+          line = line.trim();
+          if (!line) return;
+          
+          // Check for category definition
+          if (line.includes('::')) {
+            const [categoryDef] = line.split('::');
+            const [label, name] = categoryDef.split(':');
+            
+            // Create new category
+            const category = document.createElement('div');
+            category.className = 'task-group';
+            category.dataset.id = crypto.randomUUID();
+            category.innerHTML = `
+              <div class="task-group-header" onclick="toggleGroup(this)">
+                <div>
+                  <span class="category-label" contenteditable="${editMode}">${label}</span>
+                  <span class="category-name" contenteditable="${editMode}">${name}</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                  <button class="add-task-btn" onclick="event.stopPropagation(); addTask(this.closest('.task-group'))">
+                    + Add Task
+                  </button>
+                  <span class="task-count">0/0</span>
+                  <span class="delete-button" onclick="deleteCategory(event, this)">×</span>
+                </div>
+              </div>
+              <div class="task-list"></div>
+            `;
+            
+            document.getElementById('task-container').appendChild(category);
+            currentCategory = category;
+            
+          } else if (currentCategory && line) {
+            // Parse task line
+            let completed = line.startsWith('✓ ');
+            let title = completed ? line.substring(2) : line;
+            let assignee = 'Unassigned';
+            
+            // Check for assignee
+            if (title.includes(' @')) {
+              [title, assignee] = title.split(' @');
+            }
+            
+            // Add task to current category
+            const taskList = currentCategory.querySelector('.task-list');
+            const taskEl = document.createElement('div');
+            taskEl.className = 'task-item';
+            taskEl.dataset.id = crypto.randomUUID();
+            taskEl.innerHTML = `
+              <div class="task-status ${completed ? 'completed' : ''}" onclick="toggleStatus(this)"></div>
+              <div class="task-info">
+                <div class="task-title" contenteditable="${editMode}">${title}</div>
+                <button class="task-assign ${assignee !== 'Unassigned' ? 'assigned' : ''}" 
+                        onclick="showAssigneePopup(this, event)">${assignee}</button>
+              </div>
+              <span class="delete-button" onclick="deleteTask(this)">×</span>
+            `;
+            
+            taskList.appendChild(taskEl);
+          }
+        });
+        
+        saveState();
+        updateStats();
+        toggleTextEditor();
+      }
     }
   </script>
 
