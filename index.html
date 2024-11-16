@@ -1013,6 +1013,78 @@
     input:checked + .toggle-slider:before {
       transform: translateX(20px);
     }
+
+    .settings-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      z-index: 1000;
+      backdrop-filter: blur(4px);
+    }
+
+    .settings-content {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #1e293b;
+      border: 1px solid #475569;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .settings-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem;
+      border-bottom: 1px solid #475569;
+    }
+
+    .settings-header h2 {
+      margin: 0;
+      color: #a78bfa;
+    }
+
+    .settings-header button {
+      background: none;
+      border: none;
+      color: #e2e8f0;
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 0.5rem;
+    }
+
+    .settings-body {
+      padding: 1.5rem;
+    }
+
+    .settings-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .settings-group h3 {
+      margin: 0 0 1rem 0;
+      color: #a78bfa;
+    }
+
+    .settings-group label {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.5rem 0;
+      cursor: pointer;
+    }
+
+    .settings-group input[type="checkbox"] {
+      accent-color: #a78bfa;
+    }
   </style>
 </head>
 <body>
@@ -1121,6 +1193,36 @@ task"></textarea>
       <div class="text-editor-footer">
         <button onclick="parseAndSaveTasks()">Save Tasks</button>
         <button onclick="exportToText()">Export Current</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="settings-overlay" class="settings-overlay">
+    <div class="settings-content">
+      <div class="settings-header">
+        <h2>Settings</h2>
+        <button onclick="toggleSettings(event)">×</button>
+      </div>
+      <div class="settings-body">
+        <div class="settings-group">
+          <h3>Features</h3>
+          <label>
+            <input type="checkbox" onchange="toggleFeature('dueDates', this.checked)">
+            Due Dates
+          </label>
+          <label>
+            <input type="checkbox" onchange="toggleFeature('priority', this.checked)">
+            Priority Levels
+          </label>
+          <label>
+            <input type="checkbox" onchange="toggleFeature('notes', this.checked)">
+            Task Notes
+          </label>
+          <label>
+            <input type="checkbox" onchange="toggleFeature('subtasks', this.checked)">
+            Subtasks
+          </label>
+        </div>
       </div>
     </div>
   </div>
@@ -1836,27 +1938,38 @@ task"></textarea>
       const editor = document.getElementById('text-editor');
       
       if (overlay.style.display === 'none' || !overlay.style.display) {
-        // Generate text representation of current tasks
+        console.log('Opening text editor...');
         let textContent = '';
+        
+        // Debug log the categories we find
+        const categories = document.querySelectorAll('.task-group');
+        console.log('Found categories:', categories.length);
+        
         document.querySelectorAll('.task-group').forEach(category => {
-          const categoryName = category.querySelector('.category-name').textContent;
-          const categoryLabel = category.querySelector('.category-label').textContent;
-          textContent += `${categoryLabel}:${categoryName}::\n`;
+          const categoryName = category.querySelector('.category-name')?.textContent;
+          const categoryLabel = category.querySelector('.category-label')?.textContent;
+          console.log('Processing category:', categoryName, categoryLabel);
           
-          category.querySelectorAll('.task-item').forEach(task => {
-            const taskTitle = task.querySelector('.task-title').textContent;
-            const isCompleted = task.querySelector('.task-status').classList.contains('completed');
-            const assignee = task.querySelector('.task-assign').textContent;
+          if (categoryName && categoryLabel) {
+            textContent += `${categoryLabel}:${categoryName}::\n`;
             
-            // Format task with its properties
-            let taskLine = isCompleted ? '✓ ' : '';
-            taskLine += taskTitle;
-            if (assignee !== 'Unassigned') taskLine += ` @${assignee}`;
-            textContent += taskLine + '\n';
-          });
-          textContent += '\n';
+            category.querySelectorAll('.task-item').forEach(task => {
+              const taskTitle = task.querySelector('.task-title')?.textContent;
+              const isCompleted = task.querySelector('.task-status')?.classList.contains('completed');
+              const assignee = task.querySelector('.task-assign')?.textContent;
+              
+              console.log('Processing task:', taskTitle, isCompleted, assignee);
+              
+              let taskLine = isCompleted ? '✓ ' : '';
+              taskLine += taskTitle || '';
+              if (assignee && assignee !== 'Unassigned') taskLine += ` @${assignee}`;
+              textContent += taskLine + '\n';
+            });
+            textContent += '\n';
+          }
         });
         
+        console.log('Final text content:', textContent);
         editor.value = textContent;
         overlay.style.display = 'block';
         editor.focus();
@@ -2040,14 +2153,13 @@ task"></textarea>
 
     function toggleSettings(event) {
       event.stopPropagation();
-      const popup = document.getElementById('settings-popup');
-      if (!popup) {
-        console.error('Settings popup element not found');
+      const overlay = document.getElementById('settings-overlay');
+      if (!overlay) {
+        console.error('Settings overlay element not found');
         return;
       }
-      const currentDisplay = window.getComputedStyle(popup).display;
-      popup.style.display = currentDisplay === 'none' ? 'block' : 'none';
-      console.log('Settings toggled:', popup.style.display); // Debug log
+      const currentDisplay = window.getComputedStyle(overlay).display;
+      overlay.style.display = currentDisplay === 'none' ? 'block' : 'none';
     }
 
     function toggleFeature(feature, enabled) {
@@ -2062,9 +2174,9 @@ task"></textarea>
 
     // Add click outside to close settings
     document.addEventListener('click', (e) => {
-      const popup = document.getElementById('settings-popup');
-      if (!popup.contains(e.target) && !e.target.matches('[onclick="toggleSettings(event)"]')) {
-        popup.style.display = 'none';
+      const overlay = document.getElementById('settings-overlay');
+      if (!overlay.contains(e.target) && !e.target.matches('[onclick="toggleSettings(event)"]')) {
+        overlay.style.display = 'none';
       }
     });
 
