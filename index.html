@@ -1207,31 +1207,46 @@
     }
 
     .subtasks-container {
-      width: 100%;
-      margin-top: 0.5rem;
+      margin-top: 0.75rem;
       padding-left: 1.5rem;
-      order: 5;
+      border-left: 1px dashed #475569;
     }
 
     .subtask-item {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
-      padding: 0.25rem 0;
+      padding: 0.5rem;
+      margin-bottom: 0.5rem;
+      background: #1e293b;
+      border: 1px solid #475569;
+      border-radius: 4px;
       font-size: 0.875rem;
-      color: #94a3b8;
+      transition: all 0.2s;
+    }
+
+    .subtask-item:hover {
+      border-color: #a78bfa;
+      transform: translateX(4px);
     }
 
     .add-subtask-btn {
-      color: #475569;
-      font-size: 0.875rem;
-      padding: 0.25rem;
+      color: #94a3b8;
+      padding: 0.5rem;
       cursor: pointer;
+      font-size: 0.875rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
       transition: all 0.2s;
     }
 
     .add-subtask-btn:hover {
       color: #a78bfa;
+    }
+
+    .add-subtask-btn::before {
+      content: "+";
+      font-size: 1.1em;
     }
   </style>
 <script>window.FIREBASE_CONFIG = '{"apiKey":"AIzaSyCXE9UyJeSjcFOOoDucZhoaQOvtn1yTHmk","authDomain":"taskmaster-6bfbd.firebaseapp.com","projectId":"taskmaster-6bfbd","storageBucket":"taskmaster-6bfbd.firebasestorage.app","messagingSenderId":"583197012210","appId":"1:583197012210:web:a2db1887d327b4ae4e606b","measurementId":"G-QP2LY3XC9L"}';</script></head>
@@ -1864,6 +1879,7 @@ task"></textarea>
         }
       }
     }
+    }
 
     // Throttle the updateStats function
     const throttledUpdateStats = throttle(updateStats, 1000);
@@ -2435,6 +2451,69 @@ task"></textarea>
         completed: subtask.querySelector('.task-status').classList.contains('completed')
       }));
     }
+
+    function toggleTaskStatus(statusElement) {
+        const taskItem = statusElement.closest('.task-item');
+        const isCompleted = statusElement.classList.toggle('completed');
+        
+        // If this is a subtask, handle parent task status
+        if (taskItem.classList.contains('subtask-item')) {
+            const parentTask = taskItem.closest('.task-item');
+            const allSubtasks = parentTask.querySelectorAll('.subtask-item .task-status');
+            const allCompleted = Array.from(allSubtasks).every(st => st.classList.contains('completed'));
+            parentTask.querySelector('.task-status').classList.toggle('completed', allCompleted);
+        }
+        
+        saveState();
+        updateStats();
+    }
+
+    function initDragAndDrop() {
+        const taskItems = document.querySelectorAll('.task-item');
+        const taskLists = document.querySelectorAll('.task-list');
+
+        taskItems.forEach(task => {
+            task.setAttribute('draggable', 'true');
+            
+            task.addEventListener('dragstart', (e) => {
+                task.classList.add('dragging');
+                e.dataTransfer.setData('text/plain', ''); // Required for Firefox
+            });
+
+            task.addEventListener('dragend', () => {
+                task.classList.remove('dragging');
+                saveState();
+            });
+        });
+
+        taskLists.forEach(list => {
+            list.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                const draggingTask = document.querySelector('.dragging');
+                const closestTask = getClosestTaskInList(list, e.clientY);
+                
+                if (closestTask) {
+                    list.insertBefore(draggingTask, closestTask);
+                } else {
+                    list.appendChild(draggingTask);
+                }
+            });
+        });
+    }
+
+    function getClosestTaskInList(list, mouseY) {
+        const tasks = [...list.querySelectorAll('.task-item:not(.dragging)')];
+        
+        return tasks.reduce((closest, task) => {
+            const box = task.getBoundingClientRect();
+            const offset = mouseY - box.top - box.height / 2;
+            
+            if (offset < 0 && offset > closest.offset) {
+                return { offset, element: task };
+            }
+            return closest;
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
   </script>
 
   <script type="module">
@@ -2572,6 +2651,45 @@ task"></textarea>
           delete this.marks[operation];
         }
       }
+    };
+  </script>
+
+  <script>
+    const TaskState = {
+        tasks: new Map(),
+        
+        addTask(categoryId, task) {
+            if (!this.tasks.has(categoryId)) {
+                this.tasks.set(categoryId, []);
+            }
+            const tasks = this.tasks.get(categoryId);
+            tasks.push({
+                id: crypto.randomUUID(),
+                title: task.title,
+                completed: false,
+                subtasks: [],
+                ...task
+            });
+            this.save();
+        },
+        
+        toggleComplete(taskId) {
+            for (const tasks of this.tasks.values()) {
+                const task = tasks.find(t => t.id === taskId);
+                if (task) {
+                    task.completed = !task.completed;
+                    this.save();
+                    return;
+                }
+            }
+        },
+        
+        save() {
+            localStorage.setItem('taskState', JSON.stringify(Array.from(this.tasks.entries())));
+            if (window.firebase) {
+                // Firebase sync here
+            }
+        }
     };
   </script>
 </body>
