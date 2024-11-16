@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Wish Upon - Development Constellation Map</title>
+  <title>Wish Upon - Development Map</title>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Wish Upon - Development Task Management System">
@@ -1040,6 +1040,37 @@
     </div>
   </header>
 
+  <div id="settings-popup" class="settings-popup" style="display: none;">
+    <div class="feature-toggle">
+      <span>Due Dates</span>
+      <label class="toggle-switch">
+        <input type="checkbox" onchange="toggleFeature('dueDates', this.checked)">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="feature-toggle">
+      <span>Priority Levels</span>
+      <label class="toggle-switch">
+        <input type="checkbox" onchange="toggleFeature('priority', this.checked)">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="feature-toggle">
+      <span>Task Notes</span>
+      <label class="toggle-switch">
+        <input type="checkbox" onchange="toggleFeature('notes', this.checked)">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="feature-toggle">
+      <span>Subtasks</span>
+      <label class="toggle-switch">
+        <input type="checkbox" onchange="toggleFeature('subtasks', this.checked)">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+  </div>
+
   <main role="main">
     <div class="filter-box" role="search">
       <div class="assignee-filters" id="assignee-filters">
@@ -1090,37 +1121,6 @@ task"></textarea>
         <button onclick="parseAndSaveTasks()">Save Tasks</button>
         <button onclick="exportToText()">Export Current</button>
       </div>
-    </div>
-  </div>
-
-  <div id="settings-popup" class="settings-popup" style="display: none;">
-    <div class="feature-toggle">
-      <span>Due Dates</span>
-      <label class="toggle-switch">
-        <input type="checkbox" onchange="toggleFeature('dueDates', this.checked)">
-        <span class="toggle-slider"></span>
-      </label>
-    </div>
-    <div class="feature-toggle">
-      <span>Priority Levels</span>
-      <label class="toggle-switch">
-        <input type="checkbox" onchange="toggleFeature('priority', this.checked)">
-        <span class="toggle-slider"></span>
-      </label>
-    </div>
-    <div class="feature-toggle">
-      <span>Task Notes</span>
-      <label class="toggle-switch">
-        <input type="checkbox" onchange="toggleFeature('notes', this.checked)">
-        <span class="toggle-slider"></span>
-      </label>
-    </div>
-    <div class="feature-toggle">
-      <span>Subtasks</span>
-      <label class="toggle-switch">
-        <input type="checkbox" onchange="toggleFeature('subtasks', this.checked)">
-        <span class="toggle-slider"></span>
-      </label>
     </div>
   </div>
 
