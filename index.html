@@ -170,18 +170,18 @@
     .task-info {
       flex-grow: 1;
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      gap: 1.25rem;
+      gap: 1rem;
       padding: 0 0.5rem;
     }
 
     .task-title {
-      font-size: 1.1rem;
-      font-weight: 500;
-      outline: none;
-      padding: 0.25rem;
-      border-radius: 4px;
+      flex: 1;
+      order: 1;
+    }
+
+    .task-assign {
+      order: 3;
     }
 
     .task-title:focus {
@@ -1087,24 +1087,37 @@
     }
 
     .task-due-date {
-      background: transparent;
+      background: #1e293b;
       border: 1px solid #475569;
-      color: #e2e8f0;
+      color: #94a3b8;
       padding: 0.25rem 0.5rem;
       border-radius: 4px;
       font-size: 0.875rem;
       cursor: pointer;
       transition: all 0.2s;
+      min-width: 130px;
+      order: 2; /* This will help with positioning */
+    }
+
+    .task-due-date::-webkit-calendar-picker-indicator {
+      filter: invert(0.8); /* Makes the calendar icon light colored */
+      cursor: pointer;
     }
 
     .task-due-date:hover {
       border-color: #a78bfa;
+      color: #e2e8f0;
     }
 
     .task-due-date:focus {
       outline: none;
       border-color: #a78bfa;
-      background: #1e293b;
+      background: #2d3748;
+    }
+
+    .task-due-date.overdue {
+      color: #ef4444;
+      border-color: #ef4444;
     }
 
     /* Add overdue styling */
@@ -2028,83 +2041,79 @@ task"></textarea>
       const text = document.getElementById('text-editor').value;
       const lines = text.split('\n');
       let currentCategory = null;
-      
-      if (confirm('This will replace all existing tasks. Continue?')) {
-        document.getElementById('task-container').innerHTML = '';
-        
-        lines.forEach(line => {
-          line = line.trim();
-          if (!line) return;
-          
-          if (line.includes('::')) {
-            const [categoryDef] = line.split('::');
-            const [label, name] = categoryDef.split(':');
-            
-            const category = document.createElement('div');
-            category.className = 'task-group';
-            category.dataset.id = crypto.randomUUID();
-            category.innerHTML = `
-              <div class="task-group-header" onclick="toggleGroup(this)">
-                <div>
-                  <span class="category-label" contenteditable="${editMode}">${label}</span>
-                  <span class="category-name" contenteditable="${editMode}">${name}</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                  <button class="add-task-btn" onclick="event.stopPropagation(); addTask(this.closest('.task-group'))">
-                    + Add Task
-                  </button>
-                  <span class="task-count">0/0</span>
-                  <span class="delete-button" onclick="deleteCategory(event, this)">×</span>
-                </div>
-              </div>
-              <div class="task-list"></div>
-            `;
-            
-            document.getElementById('task-container').appendChild(category);
-            currentCategory = category;
-            
-          } else if (currentCategory && line) {
-            let completed = line.startsWith('✓ ') || 
-                           line.startsWith('x ') || 
-                           line.startsWith('* ') ||
-                           line.startsWith('- ') ||
-                           line.toLowerCase().startsWith('done ');
-            
-            let title = completed ? line.substring(line.indexOf(' ') + 1) : line;
-            let assignee = 'Unassigned';
-            
-            if (title.includes(' @')) {
-              [title, assignee] = title.split(' @');
-            }
-            
-            const taskList = currentCategory.querySelector('.task-list');
-            const taskEl = document.createElement('div');
-            taskEl.className = 'task-item';
-            taskEl.dataset.id = crypto.randomUUID();
-            taskEl.innerHTML = `
-              <div class="task-status ${completed ? 'completed' : ''}"></div>
-              <div class="task-info">
-                <div class="task-title" contenteditable="${editMode}">${title}</div>
-                ${activeFeatures.dueDates ? `
-                  <input type="date" 
-                         class="task-due-date ${isOverdue(task.dueDate) ? 'overdue' : ''}" 
-                         value="${task.dueDate || ''}"
-                         onchange="handleDueDateChange(this)">
-                ` : ''}
-                <button class="task-assign ${assignee !== 'Unassigned' ? 'assigned' : ''}" 
-                        onclick="showAssigneePopup(this, event)">${assignee}</button>
-              </div>
-              <span class="delete-button" onclick="deleteTask(this)">×</span>
-            `;
-            
-            taskList.appendChild(taskEl);
-          }
+      const tasks = [];
+
+      lines.forEach(line => {
+        if (line.trim().endsWith('::')) {
+          // It's a category marker
+          currentCategory = {
+            name: line.split('::')[0].replace('tag:', '').trim(),
+            tasks: []
+          };
+          tasks.push(currentCategory);
+        } else if (line.trim() && currentCategory) {
+          // It's a task
+          const taskParts = line.split('|');
+          const title = taskParts[0].trim();
+          const dueDate = taskParts[1]?.trim() || '';
+          const assignee = taskParts[2]?.trim() || 'Unassigned';
+
+          currentCategory.tasks.push({
+            title,
+            dueDate,
+            assignee
+          });
+        }
+      });
+
+      // Update the task container
+      const container = document.getElementById('task-container');
+      container.innerHTML = '';
+
+      tasks.forEach(category => {
+        const categoryEl = document.createElement('div');
+        categoryEl.className = 'task-group';
+        categoryEl.innerHTML = `
+          <div class="task-group-header" onclick="toggleGroup(this)">
+            <div>
+              <span class="category-name">${category.name}</span>
+            </div>
+            <button class="add-task-btn" onclick="addTask(this.closest('.task-group'))">
+              + Add Task
+            </button>
+          </div>
+          <div class="task-list"></div>
+        `;
+
+        const taskList = categoryEl.querySelector('.task-list');
+        category.tasks.forEach(task => {
+          const taskEl = document.createElement('div');
+          taskEl.className = 'task-item';
+          taskEl.innerHTML = `
+            <div class="task-status"></div>
+            <div class="task-info">
+              <div class="task-title">${task.title}</div>
+              ${activeFeatures.dueDates ? `
+                <input type="date" 
+                       class="task-due-date" 
+                       value="${task.dueDate}"
+                       onchange="handleDueDateChange(this)">
+              ` : ''}
+              <button class="task-assign" onclick="showAssigneePopup(this, event)">
+                ${task.assignee}
+              </button>
+            </div>
+            <span class="delete-button" onclick="deleteTask(this)">×</span>
+          `;
+          taskList.appendChild(taskEl);
         });
-        
-        saveState();
-        updateStats();
-        toggleTextEditor();
-      }
+
+        container.appendChild(categoryEl);
+      });
+
+      saveState();
+      updateStats();
+      toggleTextEditor();
     }
 
     function initializeEventDelegation() {
