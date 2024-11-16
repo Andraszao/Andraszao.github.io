@@ -1085,6 +1085,33 @@
     .settings-group input[type="checkbox"] {
       accent-color: #a78bfa;
     }
+
+    .task-due-date {
+      background: transparent;
+      border: 1px solid #475569;
+      color: #e2e8f0;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .task-due-date:hover {
+      border-color: #a78bfa;
+    }
+
+    .task-due-date:focus {
+      outline: none;
+      border-color: #a78bfa;
+      background: #1e293b;
+    }
+
+    /* Add overdue styling */
+    .task-due-date.overdue {
+      color: #ef4444;
+      border-color: #ef4444;
+    }
   </style>
 <script>window.FIREBASE_CONFIG = '{"apiKey":"AIzaSyCXE9UyJeSjcFOOoDucZhoaQOvtn1yTHmk","authDomain":"taskmaster-6bfbd.firebaseapp.com","projectId":"taskmaster-6bfbd","storageBucket":"taskmaster-6bfbd.firebasestorage.app","messagingSenderId":"583197012210","appId":"1:583197012210:web:a2db1887d327b4ae4e606b","measurementId":"G-QP2LY3XC9L"}';</script></head>
 <body>
@@ -1677,18 +1704,15 @@ task"></textarea>
               taskEl.dataset.createdAt = task.createdAt || new Date().toISOString();
               
               taskEl.innerHTML = `
-                <div class="task-status ${task.completed ? 'completed' : ''}" onclick="toggleStatus(this)"></div>
+                <div class="task-status ${task.completed ? 'completed' : ''}"></div>
                 <div class="task-info">
                   <div class="task-title" contenteditable="${editMode}">${task.title || 'New Task'}</div>
-                  <div class="task-tags">
-                    ${(task.tags || []).map(tag => `
-                      <span class="task-tag" data-tag="${tag}">
-                        ${tag}
-                        ${editMode ? '<span class="tag-remove" onclick="removeTag(this)">×</span>' : ''}
-                      </span>
-                    `).join('')}
-                    ${editMode ? '<button class="add-tag-btn" onclick="showTagInput(this)">+</button>' : ''}
-                  </div>
+                  ${activeFeatures.dueDates ? `
+                    <input type="date" 
+                           class="task-due-date ${isOverdue(task.dueDate) ? 'overdue' : ''}" 
+                           value="${task.dueDate || ''}"
+                           onchange="handleDueDateChange(this)">
+                  ` : ''}
                   <button class="task-assign ${task.assignee !== 'Unassigned' ? 'assigned' : ''}" 
                           onclick="showAssigneePopup(this, event)">${task.assignee || 'Unassigned'}</button>
                 </div>
@@ -2058,9 +2082,15 @@ task"></textarea>
             taskEl.className = 'task-item';
             taskEl.dataset.id = crypto.randomUUID();
             taskEl.innerHTML = `
-              <div class="task-status ${completed ? 'completed' : ''}" onclick="toggleStatus(this)"></div>
+              <div class="task-status ${completed ? 'completed' : ''}"></div>
               <div class="task-info">
                 <div class="task-title" contenteditable="${editMode}">${title}</div>
+                ${activeFeatures.dueDates ? `
+                  <input type="date" 
+                         class="task-due-date ${isOverdue(task.dueDate) ? 'overdue' : ''}" 
+                         value="${task.dueDate || ''}"
+                         onchange="handleDueDateChange(this)">
+                ` : ''}
                 <button class="task-assign ${assignee !== 'Unassigned' ? 'assigned' : ''}" 
                         onclick="showAssigneePopup(this, event)">${assignee}</button>
               </div>
@@ -2237,6 +2267,20 @@ task"></textarea>
       } else if (notesElement) {
         notesElement.remove();
       }
+    }
+
+    function isOverdue(dateStr) {
+      if (!dateStr) return false;
+      const dueDate = new Date(dateStr);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return dueDate < today;
+    }
+
+    function handleDueDateChange(input) {
+      const taskItem = input.closest('.task-item');
+      input.classList.toggle('overdue', isOverdue(input.value));
+      saveState();
     }
   </script>
 
