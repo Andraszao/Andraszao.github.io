@@ -942,6 +942,76 @@
       background: #2d3748;
       border-top: 1px solid #475569;
     }
+
+    .settings-popup {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      background: #1e293b;
+      border: 1px solid #475569;
+      border-radius: 6px;
+      padding: 1rem;
+      margin-top: 0.5rem;
+      z-index: 1000;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      min-width: 200px;
+    }
+
+    .feature-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #475569;
+    }
+
+    .feature-toggle:last-child {
+      border-bottom: none;
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 40px;
+      height: 20px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #475569;
+      transition: .4s;
+      border-radius: 34px;
+    }
+
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 2px;
+      bottom: 2px;
+      background-color: #e2e8f0;
+      transition: .4s;
+      border-radius: 50%;
+    }
+
+    input:checked + .toggle-slider {
+      background-color: #a78bfa;
+    }
+
+    input:checked + .toggle-slider:before {
+      transform: translateX(20px);
+    }
   </style>
 </head>
 <body>
@@ -963,6 +1033,9 @@
       <button onclick="window.open('https://ko-fi.com/inchwormgames')" 
               data-tooltip="Support us on Ko-fi">
         Support
+      </button>
+      <button onclick="toggleSettings(event)" data-tooltip="Settings">
+        ⚙️
       </button>
     </div>
   </header>
@@ -1017,6 +1090,37 @@ task"></textarea>
         <button onclick="parseAndSaveTasks()">Save Tasks</button>
         <button onclick="exportToText()">Export Current</button>
       </div>
+    </div>
+  </div>
+
+  <div id="settings-popup" class="settings-popup" style="display: none;">
+    <div class="feature-toggle">
+      <span>Due Dates</span>
+      <label class="toggle-switch">
+        <input type="checkbox" onchange="toggleFeature('dueDates', this.checked)">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="feature-toggle">
+      <span>Priority Levels</span>
+      <label class="toggle-switch">
+        <input type="checkbox" onchange="toggleFeature('priority', this.checked)">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="feature-toggle">
+      <span>Task Notes</span>
+      <label class="toggle-switch">
+        <input type="checkbox" onchange="toggleFeature('notes', this.checked)">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="feature-toggle">
+      <span>Subtasks</span>
+      <label class="toggle-switch">
+        <input type="checkbox" onchange="toggleFeature('subtasks', this.checked)">
+        <span class="toggle-slider"></span>
+      </label>
     </div>
   </div>
 
@@ -1894,6 +1998,50 @@ task"></textarea>
         observer.observe(group);
       });
     }
+
+    const activeFeatures = {
+      dueDates: false,
+      priority: false,
+      notes: false,
+      subtasks: false
+    };
+
+    function toggleSettings(event) {
+      event.stopPropagation();
+      const popup = document.getElementById('settings-popup');
+      popup.style.display = popup.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function toggleFeature(feature, enabled) {
+      activeFeatures[feature] = enabled;
+      localStorage.setItem('activeFeatures', JSON.stringify(activeFeatures));
+      
+      // Refresh task items to show/hide feature elements
+      document.querySelectorAll('.task-item').forEach(task => {
+        updateTaskFeatures(task);
+      });
+    }
+
+    // Add click outside to close settings
+    document.addEventListener('click', (e) => {
+      const popup = document.getElementById('settings-popup');
+      if (!popup.contains(e.target) && !e.target.matches('[onclick="toggleSettings(event)"]')) {
+        popup.style.display = 'none';
+      }
+    });
+
+    // Load saved features on init
+    document.addEventListener('DOMContentLoaded', () => {
+      const saved = localStorage.getItem('activeFeatures');
+      if (saved) {
+        Object.assign(activeFeatures, JSON.parse(saved));
+        // Update toggle switches
+        Object.entries(activeFeatures).forEach(([feature, enabled]) => {
+          const toggle = document.querySelector(`input[onchange="toggleFeature('${feature}', this.checked)"]`);
+          if (toggle) toggle.checked = enabled;
+        });
+      }
+    });
   </script>
 
   <script type="module">
