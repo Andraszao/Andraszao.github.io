@@ -845,6 +845,25 @@
       content: 'Type';
       opacity: 0.6;
     }
+
+    /* Add empty state styles */
+    .task-container:empty::after {
+      content: '👋 Welcome! Click "+ Add Category" to get started';
+      display: block;
+      text-align: center;
+      padding: 2rem;
+      color: #94a3b8;
+      font-style: italic;
+    }
+
+    .task-list:empty::after {
+      content: 'No tasks yet. Click "+ Add Task" to create one';
+      display: block;
+      padding: 1rem;
+      text-align: center;
+      color: #94a3b8;
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
@@ -872,6 +891,10 @@
   <div class="filter-box">
     <div class="assignee-filters" id="assignee-filters">
       <button class="assignee-filter active" data-assignee="all">All</button>
+      <input type="search" 
+             placeholder="Search tasks..." 
+             class="task-search"
+             onkeyup="filterTasksBySearch(this.value)">
     </div>
   </div>
 
@@ -1100,6 +1123,15 @@
     }
 
     function addCategory() {
+      // Add category limit check
+      const existingCategories = document.querySelectorAll('.task-group').length;
+      const CATEGORY_LIMIT = 10; // Reasonable limit for visualization
+      
+      if (existingCategories >= CATEGORY_LIMIT) {
+        alert(`Maximum ${CATEGORY_LIMIT} categories allowed for optimal organization`);
+        return;
+      }
+      
       const container = document.getElementById('task-container');
       const category = document.createElement('div');
       const categoryId = crypto.randomUUID();
@@ -1566,6 +1598,17 @@
       const tagEl = removeButton.closest('.task-tag');
       tagEl.remove();
       saveState();
+    }
+
+    // Add category reordering
+    function enableCategoryReordering() {
+      const container = document.getElementById('task-container');
+      new Sortable(container, {
+        animation: 150,
+        handle: '.task-group-header',
+        ghostClass: 'category-ghost',
+        onEnd: () => saveState()
+      });
     }
   </script>
 
