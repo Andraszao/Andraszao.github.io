@@ -1125,6 +1125,114 @@
       color: #ef4444;
       border-color: #ef4444;
     }
+
+    .task-priority {
+      background: #1e293b;
+      border: 1px solid #475569;
+      color: #94a3b8;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      min-width: 100px;
+      order: 2;
+      appearance: none;
+      background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23a78bfa%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.7rem top 50%;
+      background-size: 0.65rem auto;
+      padding-right: 2rem;
+    }
+
+    .task-priority:hover {
+      border-color: #a78bfa;
+      color: #e2e8f0;
+    }
+
+    .task-priority:focus {
+      outline: none;
+      border-color: #a78bfa;
+      background-color: #2d3748;
+    }
+
+    .task-priority option {
+      background: #1e293b;
+      color: #e2e8f0;
+    }
+
+    /* Priority colors */
+    .task-priority[value="high"] {
+      color: #ef4444;
+      border-color: #ef4444;
+    }
+
+    .task-priority[value="medium"] {
+      color: #f59e0b;
+      border-color: #f59e0b;
+    }
+
+    .task-priority[value="low"] {
+      color: #10b981;
+      border-color: #10b981;
+    }
+
+    .task-notes {
+      width: 100%;
+      margin-top: 0.5rem;
+      padding: 0.5rem;
+      background: #1e293b;
+      border: 1px solid #475569;
+      border-radius: 4px;
+      color: #94a3b8;
+      min-height: 2.5rem;
+      transition: all 0.2s;
+      order: 4;
+    }
+
+    .task-notes:empty::before {
+      content: attr(placeholder);
+      color: #475569;
+    }
+
+    .task-notes:hover {
+      border-color: #a78bfa;
+    }
+
+    .task-notes:focus {
+      outline: none;
+      border-color: #a78bfa;
+      background: #2d3748;
+      color: #e2e8f0;
+    }
+
+    .subtasks-container {
+      width: 100%;
+      margin-top: 0.5rem;
+      padding-left: 1.5rem;
+      order: 5;
+    }
+
+    .subtask-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.25rem 0;
+      font-size: 0.875rem;
+      color: #94a3b8;
+    }
+
+    .add-subtask-btn {
+      color: #475569;
+      font-size: 0.875rem;
+      padding: 0.25rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .add-subtask-btn:hover {
+      color: #a78bfa;
+    }
   </style>
 </head>
 <body>
@@ -2276,6 +2384,22 @@ task"></textarea>
       } else if (notesElement) {
         notesElement.remove();
       }
+
+      // Subtasks feature
+      if (activeFeatures.subtasks) {
+        if (!task.querySelector('.subtasks-container')) {
+          const subtasksContainer = document.createElement('div');
+          subtasksContainer.className = 'subtasks-container';
+          subtasksContainer.innerHTML = `
+            <div class="add-subtask-btn" onclick="addSubtask(this)">
+              + Add subtask
+            </div>
+          `;
+          task.appendChild(subtasksContainer);
+        }
+      } else {
+        task.querySelector('.subtasks-container')?.remove();
+      }
     }
 
     function isOverdue(dateStr) {
@@ -2290,6 +2414,26 @@ task"></textarea>
       const taskItem = input.closest('.task-item');
       input.classList.toggle('overdue', isOverdue(input.value));
       saveState();
+    }
+
+    function addSubtask(btn) {
+      const container = btn.closest('.subtasks-container');
+      const subtaskEl = document.createElement('div');
+      subtaskEl.className = 'subtask-item';
+      subtaskEl.innerHTML = `
+        <div class="task-status"></div>
+        <div class="subtask-title" contenteditable="true" onblur="saveState()">New subtask</div>
+        <span class="delete-button" onclick="this.closest('.subtask-item').remove(); saveState()">×</span>
+      `;
+      container.insertBefore(subtaskEl, btn);
+      subtaskEl.querySelector('.subtask-title').focus();
+    }
+
+    function saveSubtasks(task) {
+      return Array.from(task.querySelectorAll('.subtask-item')).map(subtask => ({
+        title: subtask.querySelector('.subtask-title').textContent,
+        completed: subtask.querySelector('.task-status').classList.contains('completed')
+      }));
     }
   </script>
 
