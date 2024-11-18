@@ -1826,105 +1826,47 @@ task"></textarea>
       });
     }
 
-    function renderState(state) {
-      // Skip rendering if state hasn't changed
-      const currentState = JSON.stringify(state);
-      if (window.lastRenderedState === currentState) {
-          return;
-      }
-      window.lastRenderedState = currentState;
-
-      // Ensure state exists with default values
-      const safeState = {
-        projectName: 'Wish Upon',
-        categories: [],
-        ...state // This will override defaults if state exists
-      };
-
-      // Update project name
-      const projectNameEl = document.querySelector('.project-name');
-      projectNameEl.textContent = safeState.projectName || projectNameEl.dataset.default;
-      
-      // Clear existing tasks
-      const container = document.getElementById('task-container');
-      if (!container) {
-        console.error('Task container not found');
-        return;
-      }
-      container.innerHTML = '';
-      
-      // Ensure categories is an array before trying to iterate
-      if (Array.isArray(safeState.categories)) {
-        safeState.categories.forEach(category => {
-          if (!category) return; // Skip invalid categories
-          
-          const categoryEl = document.createElement('div');
-          categoryEl.className = 'task-group';
-          categoryEl.dataset.id = category.id || crypto.randomUUID();
-          
-          // Update this section to handle isExpanded properly
-          const isExpanded = category.isExpanded === undefined ? false : category.isExpanded; // Default to collapsed
-          
-          categoryEl.innerHTML = `
-            <div class="task-group-header" onclick="toggleGroup(this)">
-              <div>
-                <span class="category-label" 
-                      contenteditable="${editMode}" 
-                      onclick="event.stopPropagation()"
-                      onblur="handleCategoryLabelChange(this, event)">${category.label || 'Type'}</span>
-                <span class="category-name" contenteditable="${editMode}">${category.name || 'New Category'}</span>
-              </div>
-              <div style="display: flex; align-items: center; gap: 1rem;">
-                <button class="add-task-btn" onclick="event.stopPropagation(); addTask(this.closest('.task-group'))">
-                  + Add Task
-                </button>
-                <span class="task-count">0/0</span>
-                <span class="delete-button" onclick="deleteCategory(event, this)">×</span>
-              </div>
-            </div>
-            <div class="task-list" style="display: ${isExpanded ? 'block' : 'none'}"></div>
-          `;
-          
-          container.appendChild(categoryEl);
-          
-          // Render tasks if they exist
-          const taskList = categoryEl.querySelector('.task-list');
-          if (Array.isArray(category.tasks)) {
-            category.tasks.forEach(task => {
-              if (!task) return; // Skip invalid tasks
-              
-              const taskEl = document.createElement('div');
-              taskEl.className = 'task-item';
-              taskEl.dataset.id = task.id || crypto.randomUUID();
-              taskEl.dataset.createdAt = task.createdAt || new Date().toISOString();
-              
-              taskEl.innerHTML = `
-                <div class="task-status ${task.completed ? 'completed' : ''}"></div>
-                <div class="task-info">
-                  <div class="task-title" contenteditable="${editMode}">${task.title || 'New Task'}</div>
-                  ${activeFeatures.dueDates ? `
-                    <input type="date" 
-                           class="task-due-date ${isOverdue(task.dueDate) ? 'overdue' : ''}" 
-                           value="${task.dueDate || ''}"
-                           onchange="handleDueDateChange(this)">
-                  ` : ''}
-                  <button class="task-assign ${task.assignee !== 'Unassigned' ? 'assigned' : ''}" 
-                          onclick="showAssigneePopup(this, event)">${task.assignee || 'Unassigned'}</button>
+    function renderState(data) {
+        if (!data) return;
+        
+        const container = document.getElementById('task-container');
+        if (!container) return;
+        
+        // Clear existing content
+        container.innerHTML = '';
+        
+        // Render each task group
+        Object.entries(data).forEach(([categoryId, category]) => {
+            const categoryEl = document.createElement('div');
+            categoryEl.className = 'task-group';
+            categoryEl.dataset.categoryId = categoryId;
+            
+            categoryEl.innerHTML = `
+                <div class="task-group-header">
+                    <div class="category-name">${category.name || 'Untitled'}</div>
+                    <button class="add-task-btn" onclick="addTask(this)">+ Add Task</button>
                 </div>
-                <span class="delete-button" onclick="deleteTask(this)">×</span>
-              `;
-              
-              taskList.appendChild(taskEl);
-            });
-          }
+                <div class="task-list"></div>
+            `;
+            
+            const taskList = categoryEl.querySelector('.task-list');
+            
+            // Render tasks
+            if (category.tasks) {
+                Object.entries(category.tasks).forEach(([taskId, task]) => {
+                    const taskEl = createTaskElement(taskId, task);
+                    taskList.appendChild(taskEl);
+                });
+            }
+            
+            container.appendChild(categoryEl);
         });
-      }
-
-      // Move updateStats call outside of the main rendering loop
-      requestAnimationFrame(() => {
+        
+        // Initialize drag and drop
+        initDragAndDrop();
+        
+        // Update statistics
         updateStats();
-        updateAssigneeFilters();
-      });
     }
 
     // Add throttling for stats updates
@@ -2668,6 +2610,63 @@ task"></textarea>
             });
         }
     });
+
+    function toggleStatus(statusEl) {
+        if (!statusEl) return;
+        
+        const taskItem = statusEl.closest('.task-item');
+        if (!taskItem) return;
+        
+        // Toggle completed state with animation
+        statusEl.classList.toggle('completed');
+        
+        // Animate the title
+        const taskTitle = taskItem.querySelector('.task-title');
+        if (taskTitle) {
+            taskTitle.style.transition = 'all 0.3s ease';
+            if (statusEl.classList.contains('completed')) {
+                taskTitle.style.textDecoration = 'line-through';
+                taskTitle.style.opacity = '0.7';
+            } else {
+                taskTitle.style.textDecoration = 'none';
+                taskTitle.style.opacity = '1';
+            }
+        }
+        
+        // Save state
+        saveState();
+        
+        // Update statistics
+        updateStats();
+    }
+
+    function createTaskElement(taskId, task) {
+        const el = document.createElement('div');
+        el.className = 'task-item';
+        el.dataset.taskId = taskId;
+        
+        el.innerHTML = `
+            <div class="task-status ${task.completed ? 'completed' : ''}" 
+                 onclick="toggleStatus(this)"></div>
+            <div class="task-info">
+                <div class="task-title" 
+                     contenteditable="true" 
+                     onblur="saveTaskTitle(this)">${task.title || ''}</div>
+                <button class="task-assign ${task.assignee ? 'assigned' : ''}"
+                        onclick="showAssigneePopup(this, event)">
+                    ${task.assignee || 'Unassigned'}
+                </button>
+                ${activeFeatures.notes ? `
+                    <button class="task-notes-btn" onclick="toggleNotes(this)" title="Task Notes">
+                        📝
+                    </button>
+                ` : ''}
+            </div>
+            <span class="delete-button" onclick="deleteTask(this)">×</span>
+        `;
+        
+        return el;
+    }
   </script>
 
   <script type="module">
