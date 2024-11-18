@@ -1248,6 +1248,63 @@
       content: "+";
       font-size: 1.1em;
     }
+
+    /* Add these styles to your existing CSS */
+    .subtask-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem;
+        border-bottom: 1px solid #475569;
+    }
+
+    .subtask-item:last-child {
+        border-bottom: none;
+    }
+
+    .subtask-title {
+        flex: 1;
+        padding: 0.25rem;
+        border-radius: 4px;
+    }
+
+    .subtask-title:focus {
+        background: #0f172a;
+        outline: none;
+    }
+
+    .subtasks-list {
+        max-height: 200px;
+        overflow-y: auto;
+        margin-bottom: 0.5rem;
+    }
+
+    .add-subtask-btn {
+        width: 100%;
+        background: none;
+        border: 1px dashed #475569;
+        color: #94a3b8;
+        padding: 0.5rem;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .add-subtask-btn:hover {
+        border-color: #a78bfa;
+        color: #e2e8f0;
+    }
+
+    /* Click outside handler for popups */
+    .popup-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 99;
+        display: none;
+    }
   </style>
 <script>window.FIREBASE_CONFIG = '{"apiKey":"AIzaSyCXE9UyJeSjcFOOoDucZhoaQOvtn1yTHmk","authDomain":"taskmaster-6bfbd.firebaseapp.com","projectId":"taskmaster-6bfbd","storageBucket":"taskmaster-6bfbd.firebasestorage.app","messagingSenderId":"583197012210","appId":"1:583197012210:web:a2db1887d327b4ae4e606b","measurementId":"G-QP2LY3XC9L"}';</script></head>
 <body>
@@ -1542,6 +1599,7 @@ task"></textarea>
         updateAssigneeFilters();
       }
     }
+    }
 
     function safeOperation(operation, fallback = null) {
       try {
@@ -1551,6 +1609,7 @@ task"></textarea>
         updateSyncStatus('Operation failed ⚠️');
         return fallback;
       }
+    }
     }
 
     function addTask(categoryEl) {
@@ -2431,40 +2490,72 @@ task"></textarea>
       saveState();
     }
 
-    function addSubtask(btn) {
-      const container = btn.closest('.subtasks-container');
-      const subtaskEl = document.createElement('div');
-      subtaskEl.className = 'subtask-item';
-      subtaskEl.innerHTML = `
-        <div class="task-status"></div>
-        <div class="subtask-title" contenteditable="true" onblur="saveState()">New subtask</div>
-        <span class="delete-button" onclick="this.closest('.subtask-item').remove(); saveState()">×</span>
-      `;
-      container.insertBefore(subtaskEl, btn);
-      subtaskEl.querySelector('.subtask-title').focus();
+    function saveNotes(textarea) {
+        const taskItem = textarea.closest('.task-item');
+        taskItem.dataset.notes = textarea.value;
+        window.debouncedSave();
     }
 
-    function saveSubtasks(task) {
-      return Array.from(task.querySelectorAll('.subtask-item')).map(subtask => ({
-        title: subtask.querySelector('.subtask-title').textContent,
-        completed: subtask.querySelector('.task-status').classList.contains('completed')
-      }));
+    function loadSubtasks(taskItem) {
+        const subtasksList = taskItem.querySelector('.subtasks-list');
+        if (!subtasksList) return;
+        
+        // Clear existing subtasks
+        subtasksList.innerHTML = '';
+        
+        // Load saved subtasks
+        const subtasks = JSON.parse(taskItem.dataset.subtasks || '[]');
+        subtasks.forEach(subtask => {
+            const subtaskEl = createSubtaskElement(subtask);
+            subtasksList.appendChild(subtaskEl);
+        });
     }
 
-    function toggleTaskStatus(statusElement) {
-        const taskItem = statusElement.closest('.task-item');
-        const isCompleted = statusElement.classList.toggle('completed');
-        
-        // If this is a subtask, handle parent task status
-        if (taskItem.classList.contains('subtask-item')) {
-            const parentTask = taskItem.closest('.task-item');
-            const allSubtasks = parentTask.querySelectorAll('.subtask-item .task-status');
-            const allCompleted = Array.from(allSubtasks).every(st => st.classList.contains('completed'));
-            parentTask.querySelector('.task-status').classList.toggle('completed', allCompleted);
-        }
-        
-        saveState();
-        updateStats();
+    function createSubtaskElement(subtask = { title: 'New Subtask', completed: false }) {
+        const el = document.createElement('div');
+        el.className = 'subtask-item';
+        el.innerHTML = `
+            <div class="task-status ${subtask.completed ? 'completed' : ''}" 
+                 onclick="toggleSubtaskStatus(this)"></div>
+            <div class="subtask-title" 
+                 contenteditable="true" 
+                 onblur="saveSubtask(this)">${subtask.title}</div>
+            <button class="delete-button" 
+                    onclick="deleteSubtask(this)">×</button>
+        `;
+        return el;
+    }
+
+    function addSubtask(button) {
+        const subtasksList = button.previousElementSibling;
+        const subtaskEl = createSubtaskElement();
+        subtasksList.appendChild(subtaskEl);
+        subtaskEl.querySelector('.subtask-title').focus();
+    }
+
+    function toggleSubtaskStatus(status) {
+        status.classList.toggle('completed');
+        saveSubtasks(status.closest('.task-item'));
+    }
+
+    function saveSubtask(titleEl) {
+        saveSubtasks(titleEl.closest('.task-item'));
+    }
+
+    function deleteSubtask(button) {
+        const subtaskEl = button.closest('.subtask-item');
+        const taskItem = subtaskEl.closest('.task-item');
+        subtaskEl.remove();
+        saveSubtasks(taskItem);
+    }
+
+    function saveSubtasks(taskItem) {
+        const subtasks = Array.from(taskItem.querySelectorAll('.subtask-item')).map(el => ({
+            title: el.querySelector('.subtask-title').textContent,
+            completed: el.querySelector('.task-status').classList.contains('completed')
+        }));
+        taskItem.dataset.subtasks = JSON.stringify(subtasks);
+        window.debouncedSave();
     }
 
     function initDragAndDrop() {
@@ -2513,6 +2604,70 @@ task"></textarea>
             return closest;
         }, { offset: Number.NEGATIVE_INFINITY }).element;
     }
+
+    function toggleNotes(button) {
+        // Close any other open popups
+        document.querySelectorAll('.notes-popup').forEach(popup => {
+            if (popup !== button.nextElementSibling) {
+                popup.style.display = 'none';
+            }
+        });
+
+        const popup = button.nextElementSibling;
+        const isVisible = popup.style.display === 'block';
+        
+        // Position the popup
+        if (!isVisible) {
+            popup.style.display = 'block';
+            const rect = button.getBoundingClientRect();
+            popup.style.top = `${rect.bottom + 5}px`;
+            popup.style.left = `${rect.left}px`;
+            
+            // Load saved notes
+            const taskItem = button.closest('.task-item');
+            const textarea = popup.querySelector('textarea');
+            textarea.value = taskItem.dataset.notes || '';
+            textarea.focus();
+        } else {
+            popup.style.display = 'none';
+        }
+    }
+
+    function toggleSubtasks(button) {
+        // Close any other open popups
+        document.querySelectorAll('.subtasks-popup').forEach(popup => {
+            if (popup !== button.nextElementSibling) {
+                popup.style.display = 'none';
+            }
+        });
+
+        const popup = button.nextElementSibling;
+        const isVisible = popup.style.display === 'block';
+        
+        if (!isVisible) {
+            popup.style.display = 'block';
+            const rect = button.getBoundingClientRect();
+            popup.style.top = `${rect.bottom + 5}px`;
+            popup.style.left = `${rect.left}px`;
+            
+            // Load existing subtasks
+            const taskItem = button.closest('.task-item');
+            loadSubtasks(taskItem);
+        } else {
+            popup.style.display = 'none';
+        }
+    }
+
+    // Add to your initialization code
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.notes-popup') && 
+            !e.target.closest('.task-notes-btn') &&
+            !e.target.closest('.subtasks-popup')) {
+            document.querySelectorAll('.notes-popup, .subtasks-popup').forEach(popup => {
+                popup.style.display = 'none';
+            });
+        }
+    });
   </script>
 
   <script type="module">
