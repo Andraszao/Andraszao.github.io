@@ -1552,6 +1552,7 @@ task"></textarea>
         return fallback;
       }
     }
+
     function addTask(categoryEl) {
       return safeOperation(() => {
         if (!categoryEl) {
@@ -1646,19 +1647,14 @@ task"></textarea>
       const taskItem = button.closest('.task-item');
       if (!taskItem) return;
       
-      // Remove from DOM
       taskItem.remove();
       updateStats();
       updateAssigneeFilters();
-      
-      // Save changes
-      saveState()
-        .catch(error => {
-          console.error('Error deleting task:', error);
-          updateSyncStatus('Error deleting task ⚠️');
-          // Optionally restore the task if save failed
-          // taskItem.parentElement.appendChild(taskItem);
-        });
+      saveState().catch(error => {
+        console.error('Error deleting task:', error);
+        updateSyncStatus('Error deleting task ⚠️');
+      });
+      document.dispatchEvent(new Event('taskDeleted'));
     }
 
     function deleteCategory(event, button) {
@@ -1771,109 +1767,105 @@ task"></textarea>
       });
     }
 
-    // First, let's define the renderState function
     function renderState(state) {
-      try {
-        const container = document.getElementById('task-container');
-        if (!container) {
-          console.error('Task container not found');
+      // Skip rendering if state hasn't changed
+      const currentState = JSON.stringify(state);
+      if (window.lastRenderedState === currentState) {
           return;
-        }
+      }
+      window.lastRenderedState = currentState;
 
-        // Clear existing content
-        container.innerHTML = '';
+      // Ensure state exists with default values
+      const safeState = {
+        projectName: 'Wish Upon',
+        categories: [],
+        ...state // This will override defaults if state exists
+      };
 
-        // Update project name if it exists
-        if (state.projectName) {
-          const projectNameEl = document.querySelector('.project-name');
-          if (projectNameEl) {
-            projectNameEl.textContent = state.projectName;
-          }
-        }
-
-        // Render categories and their tasks
-        state.categories?.forEach(category => {
+      // Update project name
+      const projectNameEl = document.querySelector('.project-name');
+      projectNameEl.textContent = safeState.projectName || projectNameEl.dataset.default;
+      
+      // Clear existing tasks
+      const container = document.getElementById('task-container');
+      if (!container) {
+        console.error('Task container not found');
+        return;
+      }
+      container.innerHTML = '';
+      
+      // Ensure categories is an array before trying to iterate
+      if (Array.isArray(safeState.categories)) {
+        safeState.categories.forEach(category => {
+          if (!category) return; // Skip invalid categories
+          
           const categoryEl = document.createElement('div');
           categoryEl.className = 'task-group';
-          categoryEl.dataset.id = category.id;
+          categoryEl.dataset.id = category.id || crypto.randomUUID();
+          
+          // Update this section to handle isExpanded properly
+          const isExpanded = category.isExpanded === undefined ? false : category.isExpanded; // Default to collapsed
           
           categoryEl.innerHTML = `
-            <div class="task-group-header">
-              <div class="category-info">
-                <span class="category-label">${category.label || 'Type'}</span>
-                <span class="category-name" contenteditable="true">${category.name}</span>
+            <div class="task-group-header" onclick="toggleGroup(this)">
+              <div>
+                <span class="category-label" 
+                      contenteditable="${editMode}" 
+                      onclick="event.stopPropagation()"
+                      onblur="handleCategoryLabelChange(this, event)">${category.label || 'Type'}</span>
+                <span class="category-name" contenteditable="${editMode}">${category.name || 'New Category'}</span>
               </div>
-              <button class="add-task-btn" onclick="addTask(this.closest('.task-group'))">
-                + Add Task
-              </button>
+              <div style="display: flex; align-items: center; gap: 1rem;">
+                <button class="add-task-btn" onclick="event.stopPropagation(); addTask(this.closest('.task-group'))">
+                  + Add Task
+                </button>
+                <span class="task-count">0/0</span>
+                <span class="delete-button" onclick="deleteCategory(event, this)">×</span>
+              </div>
             </div>
-            <div class="task-list">
-              ${category.tasks?.map(task => `
-                <div class="task-item" data-id="${task.id}" data-created-at="${task.createdAt || new Date().toISOString()}">
-                  <div class="task-status ${task.completed ? 'completed' : ''}" onclick="toggleTaskStatus(this)"></div>
-                  <div class="task-info">
-                    <div class="task-title" contenteditable="true">${task.title}</div>
-                    <button class="task-assign" onclick="showAssigneePopup(this, event)">
-                      ${task.assignee || 'Unassigned'}
-                    </button>
-                  </div>
-                  <span class="delete-button" onclick="deleteTask(this)">×</span>
-                </div>
-              `).join('') || ''}
-            </div>
+            <div class="task-list" style="display: ${isExpanded ? 'block' : 'none'}"></div>
           `;
           
           container.appendChild(categoryEl);
-        });
-
-        // Update UI elements
-        updateStats();
-        updateAssigneeFilters();
-        
-      } catch (error) {
-        console.error('Error rendering state:', error);
-        updateSyncStatus('Error rendering tasks ⚠️');
-      }
-    }
-
-    // Update the Firebase initialization to use renderState
-    function initFirebase() {
-      try {
-        if (!window.FIREBASE_CONFIG) {
-          console.error('Firebase config is missing');
-          updateSyncStatus('Local Mode (No Firebase Config) 💾');
-          return;
-        }
-
-        const config = JSON.parse(window.FIREBASE_CONFIG);
-        const app = initializeApp(config);
-        window.db = getDatabase();
-
-        // Listen for changes
-        const taskId = 'default-task-list';
-        const tasksRef = window.firebaseRef(window.db, `tasks/${taskId}`);
-        
-        onValue(tasksRef, (snapshot) => {
-          const data = snapshot.val();
-          if (data) {
-            renderState(data);
-            updateSyncStatus('Connected to Firebase 🔥');
-          } else {
-            // Initialize with empty state
-            renderState({
-              projectName: 'Wish Upon',
-              categories: []
+          
+          // Render tasks if they exist
+          const taskList = categoryEl.querySelector('.task-list');
+          if (Array.isArray(category.tasks)) {
+            category.tasks.forEach(task => {
+              if (!task) return; // Skip invalid tasks
+              
+              const taskEl = document.createElement('div');
+              taskEl.className = 'task-item';
+              taskEl.dataset.id = task.id || crypto.randomUUID();
+              taskEl.dataset.createdAt = task.createdAt || new Date().toISOString();
+              
+              taskEl.innerHTML = `
+                <div class="task-status ${task.completed ? 'completed' : ''}"></div>
+                <div class="task-info">
+                  <div class="task-title" contenteditable="${editMode}">${task.title || 'New Task'}</div>
+                  ${activeFeatures.dueDates ? `
+                    <input type="date" 
+                           class="task-due-date ${isOverdue(task.dueDate) ? 'overdue' : ''}" 
+                           value="${task.dueDate || ''}"
+                           onchange="handleDueDateChange(this)">
+                  ` : ''}
+                  <button class="task-assign ${task.assignee !== 'Unassigned' ? 'assigned' : ''}" 
+                          onclick="showAssigneePopup(this, event)">${task.assignee || 'Unassigned'}</button>
+                </div>
+                <span class="delete-button" onclick="deleteTask(this)">×</span>
+              `;
+              
+              taskList.appendChild(taskEl);
             });
           }
-        }, (error) => {
-          console.error('Firebase read error:', error);
-          updateSyncStatus('Firebase Error ⚠️');
         });
-
-      } catch (error) {
-        console.error('Firebase init error:', error);
-        updateSyncStatus('Firebase Error ⚠️');
       }
+
+      // Move updateStats call outside of the main rendering loop
+      requestAnimationFrame(() => {
+        updateStats();
+        updateAssigneeFilters();
+      });
     }
 
     // Add throttling for stats updates
@@ -1911,46 +1903,44 @@ task"></textarea>
     }
 
     function saveState() {
+      performance.start('saveState');
       try {
         const state = {
           projectName: document.querySelector('.project-name').textContent || 'Wish Upon',
-          categories: Array.from(document.querySelectorAll('.task-group')).map(group => ({
-            id: group.dataset.id,
-            name: group.querySelector('.category-name')?.textContent,
-            label: group.querySelector('.category-label')?.textContent || 'Category',
-            isExpanded: group.querySelector('.task-list')?.style.display !== 'none',
-            tasks: Array.from(group.querySelectorAll('.task-item')).map(task => ({
-              id: task.dataset.id,
-              title: task.querySelector('.task-title')?.textContent || 'New Task',
-              completed: task.querySelector('.task-status')?.classList.contains('completed') || false,
-              assignee: task.querySelector('.task-assign')?.textContent || 'Unassigned',
-              createdAt: task.dataset.createdAt || new Date().toISOString()
-            }))
-          }))
+          categories: Array.from(document.querySelectorAll('.task-group')).map(group => {
+            const categoryData = {
+              id: group.dataset.id,
+              name: group.querySelector('.category-name')?.textContent,
+              label: group.querySelector('.category-label')?.textContent || 'Category',
+              isExpanded: group.querySelector('.task-list')?.style.display !== 'none',
+              tasks: Array.from(group.querySelectorAll('.task-item')).map(task => ({
+                id: task.dataset.id,
+                title: task.querySelector('.task-title')?.textContent || 'New Task',
+                completed: task.querySelector('.task-status')?.classList.contains('completed') || false,
+                assignee: task.querySelector('.task-assign')?.textContent || 'Unassigned',
+                createdAt: task.dataset.createdAt || new Date().toISOString(),
+                tags: Array.from(task.querySelectorAll('.task-tag'))
+                  .map(tag => tag.dataset.tag)
+              }))
+            };
+            return categoryData;
+          }).filter(category => category.id && category.name)
         };
 
-        // Always save to localStorage as backup
+        // Mark local update and save
+        window.markLocalUpdate();
         localStorage.setItem('taskState', JSON.stringify(state));
-        
-        // Try to save to Firebase if available
+
         if (window.db && window.firebaseRef && window.firebaseSet) {
           const taskId = 'default-task-list';
           const tasksRef = window.firebaseRef(window.db, `tasks/${taskId}`);
-          return window.firebaseSet(tasksRef, state)
-            .catch(error => {
-              console.error('Firebase save failed:', error);
-              updateSyncStatus('Using local storage (Firebase error) 💾');
-              // Still return success since we saved to localStorage
-              return Promise.resolve();
-            });
+          return window.firebaseSet(tasksRef, state);
         }
-        
-        return Promise.resolve();
       } catch (error) {
         console.error('Error saving state:', error);
         updateSyncStatus('Error saving changes ⚠');
-        return Promise.reject(error);
       }
+      performance.end('saveState');
     }
 
     function updateSyncStatus(message) {
@@ -2107,14 +2097,40 @@ task"></textarea>
       const overlay = document.getElementById('text-editor-overlay');
       const editor = document.getElementById('text-editor');
       
-      if (!overlay || !editor) {
-        console.error('Text editor elements not found');
-        return;
-      }
-      
       if (overlay.style.display === 'none' || !overlay.style.display) {
-        // Export current tasks to text format
-        exportToText();
+        console.log('Opening text editor...');
+        let textContent = '';
+        
+        // Debug log the categories we find
+        const categories = document.querySelectorAll('.task-group');
+        console.log('Found categories:', categories.length);
+        
+        document.querySelectorAll('.task-group').forEach(category => {
+          const categoryName = category.querySelector('.category-name')?.textContent;
+          const categoryLabel = category.querySelector('.category-label')?.textContent;
+          console.log('Processing category:', categoryName, categoryLabel);
+          
+          if (categoryName && categoryLabel) {
+            textContent += `${categoryLabel}:${categoryName}::\n`;
+            
+            category.querySelectorAll('.task-item').forEach(task => {
+              const taskTitle = task.querySelector('.task-title')?.textContent;
+              const isCompleted = task.querySelector('.task-status')?.classList.contains('completed');
+              const assignee = task.querySelector('.task-assign')?.textContent;
+              
+              console.log('Processing task:', taskTitle, isCompleted, assignee);
+              
+              let taskLine = isCompleted ? '✓ ' : '';
+              taskLine += taskTitle || '';
+              if (assignee && assignee !== 'Unassigned') taskLine += ` @${assignee}`;
+              textContent += taskLine + '\n';
+            });
+            textContent += '\n';
+          }
+        });
+        
+        console.log('Final text content:', textContent);
+        editor.value = textContent;
         overlay.style.display = 'block';
         editor.focus();
       } else {
@@ -2123,104 +2139,104 @@ task"></textarea>
     }
 
     function exportToText() {
-      try {
-        const categories = document.querySelectorAll('.task-group');
-        let text = '';
+      const categories = document.querySelectorAll('.task-group');
+      let text = '';
+      
+      categories.forEach(category => {
+        const categoryName = category.querySelector('.category-name').textContent;
+        const categoryLabel = category.querySelector('.category-label').textContent;
+        text += `${categoryLabel}:${categoryName}::\n`;
         
-        categories.forEach(category => {
-          // Add null checks for all element queries
-          const categoryName = category.querySelector('.category-name')?.textContent || 'Unnamed Category';
-          const categoryLabel = category.querySelector('.category-label')?.textContent || 'Type';
-          text += `${categoryLabel}:${categoryName}::\n`;
-          
-          const tasks = category.querySelectorAll('.task-item');
-          tasks.forEach(task => {
-            // Add null checks for all task properties
-            const title = task.querySelector('.task-title')?.textContent || 'Untitled Task';
-            const isCompleted = task.querySelector('.task-status')?.classList.contains('completed') || false;
-            const assignee = task.querySelector('.task-assign')?.textContent || 'Unassigned';
-            
-            text += `${isCompleted ? 'x ' : ''}${title}${assignee !== 'Unassigned' ? ` @${assignee}` : ''}\n`;
-          });
-          text += '\n';
+        const tasks = category.querySelectorAll('.task-item');
+        tasks.forEach(task => {
+          const title = task.querySelector('.task-title').textContent;
+          const isCompleted = task.querySelector('.task-status').classList.contains('completed');
+          const assignee = task.querySelector('.task-assign').textContent;
+          text += `${isCompleted ? 'x ' : ''}${title}${assignee !== 'Unassigned' ? ` @${assignee}` : ''}\n`;
         });
-        
-        const textEditor = document.getElementById('text-editor');
-        if (textEditor) {
-          textEditor.value = text;
-        } else {
-          console.error('Text editor element not found');
-        }
-      } catch (error) {
-        console.error('Error exporting to text:', error);
-        // Optionally show error to user
-        alert('Error exporting tasks to text. Please try again.');
-      }
+        text += '\n';
+      });
+      
+      document.getElementById('text-editor').value = text;
     }
 
     function parseAndSaveTasks() {
-      try {
-        const text = document.getElementById('text-editor').value;
-        const lines = text.split('\n');
-        let currentCategory = null;
-        const categories = [];
+      const text = document.getElementById('text-editor').value;
+      const lines = text.split('\n');
+      let currentCategory = null;
+      const tasks = [];
 
-        lines.forEach(line => {
-          const trimmedLine = line.trim();
-          
-          // Skip empty lines
-          if (!trimmedLine) return;
-          
-          // Check if it's a category line (ends with ::)
-          if (trimmedLine.endsWith('::')) {
-            // Parse category format: "Label:Name::"
-            const [label, name] = trimmedLine.slice(0, -2).split(':');
-            currentCategory = {
-              id: crypto.randomUUID(),
-              label: label || 'Type',
-              name: name || 'New Category',
-              tasks: []
-            };
-            categories.push(currentCategory);
-          } 
-          // If we have a current category and it's not an empty line, it's a task
-          else if (currentCategory) {
-            // Parse task format: "[x] Task Title [@Assignee]"
-            const isCompleted = trimmedLine.startsWith('x ');
-            const taskText = isCompleted ? trimmedLine.slice(2) : trimmedLine;
-            
-            // Extract assignee if present
-            let title = taskText;
-            let assignee = 'Unassigned';
-            const assigneeMatch = taskText.match(/@(\S+)$/);
-            if (assigneeMatch) {
-              title = taskText.slice(0, assigneeMatch.index).trim();
-              assignee = assigneeMatch[1];
-            }
-            
-            currentCategory.tasks.push({
-              id: crypto.randomUUID(),
-              title,
-              completed: isCompleted,
-              assignee,
-              createdAt: new Date().toISOString()
-            });
-          }
+      lines.forEach(line => {
+        if (line.trim().endsWith('::')) {
+          // It's a category marker
+          currentCategory = {
+            name: line.split('::')[0].replace('tag:', '').trim(),
+            tasks: []
+          };
+          tasks.push(currentCategory);
+        } else if (line.trim() && currentCategory) {
+          // It's a task
+          const taskParts = line.split('|');
+          const title = taskParts[0].trim();
+          const dueDate = taskParts[1]?.trim() || '';
+          const assignee = taskParts[2]?.trim() || 'Unassigned';
+
+          currentCategory.tasks.push({
+            title,
+            dueDate,
+            assignee
+          });
+        }
+      });
+
+      // Update the task container
+      const container = document.getElementById('task-container');
+      container.innerHTML = '';
+
+      tasks.forEach(category => {
+        const categoryEl = document.createElement('div');
+        categoryEl.className = 'task-group';
+        categoryEl.innerHTML = `
+          <div class="task-group-header" onclick="toggleGroup(this)">
+            <div>
+              <span class="category-name">${category.name}</span>
+            </div>
+            <button class="add-task-btn" onclick="addTask(this.closest('.task-group'))">
+              + Add Task
+            </button>
+          </div>
+          <div class="task-list"></div>
+        `;
+
+        const taskList = categoryEl.querySelector('.task-list');
+        category.tasks.forEach(task => {
+          const taskEl = document.createElement('div');
+          taskEl.className = 'task-item';
+          taskEl.innerHTML = `
+            <div class="task-status"></div>
+            <div class="task-info">
+              <div class="task-title">${task.title}</div>
+              ${activeFeatures.dueDates ? `
+                <input type="date" 
+                       class="task-due-date" 
+                       value="${task.dueDate}"
+                       onchange="handleDueDateChange(this)">
+              ` : ''}
+              <button class="task-assign" onclick="showAssigneePopup(this, event)">
+                ${task.assignee}
+              </button>
+            </div>
+            <span class="delete-button" onclick="deleteTask(this)">×</span>
+          `;
+          taskList.appendChild(taskEl);
         });
 
-        // Render the new state
-        renderState({ categories });
-        
-        // Close the editor
-        const overlay = document.getElementById('text-editor-overlay');
-        if (overlay) overlay.style.display = 'none';
-        
-        // Save the new state
-        saveState();
-      } catch (error) {
-        console.error('Error parsing tasks:', error);
-        alert('Error parsing tasks. Please check the format and try again.');
-      }
+        container.appendChild(categoryEl);
+      });
+
+      saveState();
+      updateStats();
+      toggleTextEditor();
     }
 
     function initializeEventDelegation() {
@@ -2505,58 +2521,83 @@ task"></textarea>
     // Firebase initialization
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
     import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
-    import { getAnalytics, setAnalyticsCollectionEnabled } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
 
     // Make Firebase functions globally available
     window.firebaseRef = ref;
     window.firebaseSet = set;
 
-    const config = JSON.parse(window.FIREBASE_CONFIG || '{}');
-    const app = initializeApp(config);
-    window.db = getDatabase();
+    async function init() {
+      try {
+        // Check if Firebase config exists
+        if (!window.FIREBASE_CONFIG) {
+          console.error('Firebase config is missing');
+          updateSyncStatus('Local Mode (No Firebase Config) 💾');
+          
+          // Load from localStorage as fallback
+          const savedState = localStorage.getItem('taskState');
+          if (savedState) {
+            renderState(JSON.parse(savedState));
+          }
+          return;
+        }
 
-    // Configure analytics with proper cookie settings
-    const analytics = getAnalytics(app);
-    setAnalyticsCollectionEnabled(analytics, {
-      cookie_flags: 'SameSite=None;Secure',
-      cookie_domain: window.location.hostname,
-      cookie_expires: 63072000
-    });
+        const config = JSON.parse(window.FIREBASE_CONFIG);
+        const app = initializeApp(config);
+        
+        // Initialize database with persistence enabled
+        window.db = getDatabase();
+        
+        const analytics = getAnalytics(app);
 
-    updateSyncStatus('Connected to Cloud ☁️');
-
-    // Set up real-time sync with reconnection logic
-    const taskId = 'default-task-list';
-    const tasksRef = ref(window.db, `tasks/${taskId}`);
-    
-    const connectedRef = ref(window.db, '.info/connected');
-    onValue(connectedRef, (snap) => {
-      if (snap.val() === true) {
         updateSyncStatus('Connected to Cloud ☁️');
-      } else {
-        updateSyncStatus('Offline Mode 📱');
-      }
-    }, (error) => {
-      console.error('Connection error:', error);
-      updateSyncStatus('Connection Error ⚠️');
-    });
 
-    onValue(tasksRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data && (!window.lastLocalUpdate || Date.now() - window.lastLocalUpdate > 1000)) {
-        renderState(data);
-      }
-    }, (error) => {
-      console.error('Data sync error:', error);
-      updateSyncStatus('Sync Error ⚠️');
-      
-      // Load from localStorage as fallback
-      const savedState = localStorage.getItem('taskState');
-      if (savedState) {
-        renderState(JSON.parse(savedState));
-      }
-    });
+        // Set up real-time sync with reconnection logic
+        const taskId = 'default-task-list';
+        const tasksRef = ref(window.db, `tasks/${taskId}`);
+        
+        const connectedRef = ref(window.db, '.info/connected');
+        onValue(connectedRef, (snap) => {
+          if (snap.val() === true) {
+            updateSyncStatus('Connected to Cloud ☁️');
+          } else {
+            updateSyncStatus('Offline Mode 📱');
+          }
+        }, (error) => {
+          console.error('Connection error:', error);
+          updateSyncStatus('Connection Error ⚠️');
+        });
 
+        onValue(tasksRef, (snapshot) => {
+          const data = snapshot.val();
+          if (data && (!window.lastLocalUpdate || Date.now() - window.lastLocalUpdate > 1000)) {
+            renderState(data);
+          }
+        }, (error) => {
+          console.error('Data sync error:', error);
+          updateSyncStatus('Sync Error ⚠️');
+          
+          // Load from localStorage as fallback
+          const savedState = localStorage.getItem('taskState');
+          if (savedState) {
+            renderState(JSON.parse(savedState));
+          }
+        });
+
+      } catch (error) {
+        console.error('Firebase initialization error:', error);
+        updateSyncStatus('Error Connecting ⚠️');
+        
+        // Load from localStorage as fallback
+        const savedState = localStorage.getItem('taskState');
+        if (savedState) {
+          renderState(JSON.parse(savedState));
+        }
+      }
+    }
+
+    // Initialize when DOM is ready
+    window.addEventListener('DOMContentLoaded', init);
   </script>
 
   <script>
@@ -2665,58 +2706,83 @@ task"></textarea>
     // Firebase initialization
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
     import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
-    import { getAnalytics, setAnalyticsCollectionEnabled } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
 
     // Make Firebase functions globally available
     window.firebaseRef = ref;
     window.firebaseSet = set;
 
-    const config = JSON.parse(window.FIREBASE_CONFIG || '{}');
-    const app = initializeApp(config);
-    window.db = getDatabase();
+    async function init() {
+      try {
+        // Check if Firebase config exists
+        if (!window.FIREBASE_CONFIG) {
+          console.error('Firebase config is missing');
+          updateSyncStatus('Local Mode (No Firebase Config) 💾');
+          
+          // Load from localStorage as fallback
+          const savedState = localStorage.getItem('taskState');
+          if (savedState) {
+            renderState(JSON.parse(savedState));
+          }
+          return;
+        }
 
-    // Configure analytics with proper cookie settings
-    const analytics = getAnalytics(app);
-    setAnalyticsCollectionEnabled(analytics, {
-      cookie_flags: 'SameSite=None;Secure',
-      cookie_domain: window.location.hostname,
-      cookie_expires: 63072000
-    });
+        const config = JSON.parse(window.FIREBASE_CONFIG);
+        const app = initializeApp(config);
+        
+        // Initialize database with persistence enabled
+        window.db = getDatabase();
+        
+        const analytics = getAnalytics(app);
 
-    updateSyncStatus('Connected to Cloud ☁️');
-
-    // Set up real-time sync with reconnection logic
-    const taskId = 'default-task-list';
-    const tasksRef = ref(window.db, `tasks/${taskId}`);
-    
-    const connectedRef = ref(window.db, '.info/connected');
-    onValue(connectedRef, (snap) => {
-      if (snap.val() === true) {
         updateSyncStatus('Connected to Cloud ☁️');
-      } else {
-        updateSyncStatus('Offline Mode 📱');
-      }
-    }, (error) => {
-      console.error('Connection error:', error);
-      updateSyncStatus('Connection Error ⚠️');
-    });
 
-    onValue(tasksRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data && (!window.lastLocalUpdate || Date.now() - window.lastLocalUpdate > 1000)) {
-        renderState(data);
-      }
-    }, (error) => {
-      console.error('Data sync error:', error);
-      updateSyncStatus('Sync Error ⚠️');
-      
-      // Load from localStorage as fallback
-      const savedState = localStorage.getItem('taskState');
-      if (savedState) {
-        renderState(JSON.parse(savedState));
-      }
-    });
+        // Set up real-time sync with reconnection logic
+        const taskId = 'default-task-list';
+        const tasksRef = ref(window.db, `tasks/${taskId}`);
+        
+        const connectedRef = ref(window.db, '.info/connected');
+        onValue(connectedRef, (snap) => {
+          if (snap.val() === true) {
+            updateSyncStatus('Connected to Cloud ☁️');
+          } else {
+            updateSyncStatus('Offline Mode 📱');
+          }
+        }, (error) => {
+          console.error('Connection error:', error);
+          updateSyncStatus('Connection Error ⚠️');
+        });
 
+        onValue(tasksRef, (snapshot) => {
+          const data = snapshot.val();
+          if (data && (!window.lastLocalUpdate || Date.now() - window.lastLocalUpdate > 1000)) {
+            renderState(data);
+          }
+        }, (error) => {
+          console.error('Data sync error:', error);
+          updateSyncStatus('Sync Error ⚠️');
+          
+          // Load from localStorage as fallback
+          const savedState = localStorage.getItem('taskState');
+          if (savedState) {
+            renderState(JSON.parse(savedState));
+          }
+        });
+
+      } catch (error) {
+        console.error('Firebase initialization error:', error);
+        updateSyncStatus('Error Connecting ⚠️');
+        
+        // Load from localStorage as fallback
+        const savedState = localStorage.getItem('taskState');
+        if (savedState) {
+          renderState(JSON.parse(savedState));
+        }
+      }
+    }
+
+    // Initialize when DOM is ready
+    window.addEventListener('DOMContentLoaded', init);
   </script>
 </body>
 </html>
