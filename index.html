@@ -1773,105 +1773,109 @@ task"></textarea>
       });
     }
 
+    // First, let's define the renderState function
     function renderState(state) {
-      // Skip rendering if state hasn't changed
-      const currentState = JSON.stringify(state);
-      if (window.lastRenderedState === currentState) {
+      try {
+        const container = document.getElementById('task-container');
+        if (!container) {
+          console.error('Task container not found');
           return;
-      }
-      window.lastRenderedState = currentState;
+        }
 
-      // Ensure state exists with default values
-      const safeState = {
-        projectName: 'Wish Upon',
-        categories: [],
-        ...state // This will override defaults if state exists
-      };
+        // Clear existing content
+        container.innerHTML = '';
 
-      // Update project name
-      const projectNameEl = document.querySelector('.project-name');
-      projectNameEl.textContent = safeState.projectName || projectNameEl.dataset.default;
-      
-      // Clear existing tasks
-      const container = document.getElementById('task-container');
-      if (!container) {
-        console.error('Task container not found');
-        return;
-      }
-      container.innerHTML = '';
-      
-      // Ensure categories is an array before trying to iterate
-      if (Array.isArray(safeState.categories)) {
-        safeState.categories.forEach(category => {
-          if (!category) return; // Skip invalid categories
-          
+        // Update project name if it exists
+        if (state.projectName) {
+          const projectNameEl = document.querySelector('.project-name');
+          if (projectNameEl) {
+            projectNameEl.textContent = state.projectName;
+          }
+        }
+
+        // Render categories and their tasks
+        state.categories?.forEach(category => {
           const categoryEl = document.createElement('div');
           categoryEl.className = 'task-group';
-          categoryEl.dataset.id = category.id || crypto.randomUUID();
-          
-          // Update this section to handle isExpanded properly
-          const isExpanded = category.isExpanded === undefined ? false : category.isExpanded; // Default to collapsed
+          categoryEl.dataset.id = category.id;
           
           categoryEl.innerHTML = `
-            <div class="task-group-header" onclick="toggleGroup(this)">
-              <div>
-                <span class="category-label" 
-                      contenteditable="${editMode}" 
-                      onclick="event.stopPropagation()"
-                      onblur="handleCategoryLabelChange(this, event)">${category.label || 'Type'}</span>
-                <span class="category-name" contenteditable="${editMode}">${category.name || 'New Category'}</span>
+            <div class="task-group-header">
+              <div class="category-info">
+                <span class="category-label">${category.label || 'Type'}</span>
+                <span class="category-name" contenteditable="true">${category.name}</span>
               </div>
-              <div style="display: flex; align-items: center; gap: 1rem;">
-                <button class="add-task-btn" onclick="event.stopPropagation(); addTask(this.closest('.task-group'))">
-                  + Add Task
-                </button>
-                <span class="task-count">0/0</span>
-                <span class="delete-button" onclick="deleteCategory(event, this)">×</span>
-              </div>
+              <button class="add-task-btn" onclick="addTask(this.closest('.task-group'))">
+                + Add Task
+              </button>
             </div>
-            <div class="task-list" style="display: ${isExpanded ? 'block' : 'none'}"></div>
+            <div class="task-list">
+              ${category.tasks?.map(task => `
+                <div class="task-item" data-id="${task.id}" data-created-at="${task.createdAt || new Date().toISOString()}">
+                  <div class="task-status ${task.completed ? 'completed' : ''}" onclick="toggleTaskStatus(this)"></div>
+                  <div class="task-info">
+                    <div class="task-title" contenteditable="true">${task.title}</div>
+                    <button class="task-assign" onclick="showAssigneePopup(this, event)">
+                      ${task.assignee || 'Unassigned'}
+                    </button>
+                  </div>
+                  <span class="delete-button" onclick="deleteTask(this)">×</span>
+                </div>
+              `).join('') || ''}
+            </div>
           `;
           
           container.appendChild(categoryEl);
-          
-          // Render tasks if they exist
-          const taskList = categoryEl.querySelector('.task-list');
-          if (Array.isArray(category.tasks)) {
-            category.tasks.forEach(task => {
-              if (!task) return; // Skip invalid tasks
-              
-              const taskEl = document.createElement('div');
-              taskEl.className = 'task-item';
-              taskEl.dataset.id = task.id || crypto.randomUUID();
-              taskEl.dataset.createdAt = task.createdAt || new Date().toISOString();
-              
-              taskEl.innerHTML = `
-                <div class="task-status ${task.completed ? 'completed' : ''}"></div>
-                <div class="task-info">
-                  <div class="task-title" contenteditable="${editMode}">${task.title || 'New Task'}</div>
-                  ${activeFeatures.dueDates ? `
-                    <input type="date" 
-                           class="task-due-date ${isOverdue(task.dueDate) ? 'overdue' : ''}" 
-                           value="${task.dueDate || ''}"
-                           onchange="handleDueDateChange(this)">
-                  ` : ''}
-                  <button class="task-assign ${task.assignee !== 'Unassigned' ? 'assigned' : ''}" 
-                          onclick="showAssigneePopup(this, event)">${task.assignee || 'Unassigned'}</button>
-                </div>
-                <span class="delete-button" onclick="deleteTask(this)">×</span>
-              `;
-              
-              taskList.appendChild(taskEl);
-            });
-          }
         });
-      }
 
-      // Move updateStats call outside of the main rendering loop
-      requestAnimationFrame(() => {
+        // Update UI elements
         updateStats();
         updateAssigneeFilters();
-      });
+        
+      } catch (error) {
+        console.error('Error rendering state:', error);
+        updateSyncStatus('Error rendering tasks ⚠️');
+      }
+    }
+
+    // Update the Firebase initialization to use renderState
+    function initFirebase() {
+      try {
+        if (!window.FIREBASE_CONFIG) {
+          console.error('Firebase config is missing');
+          updateSyncStatus('Local Mode (No Firebase Config) 💾');
+          return;
+        }
+
+        const config = JSON.parse(window.FIREBASE_CONFIG);
+        const app = initializeApp(config);
+        window.db = getDatabase();
+
+        // Listen for changes
+        const taskId = 'default-task-list';
+        const tasksRef = window.firebaseRef(window.db, `tasks/${taskId}`);
+        
+        onValue(tasksRef, (snapshot) => {
+          const data = snapshot.val();
+          if (data) {
+            renderState(data);
+            updateSyncStatus('Connected to Firebase 🔥');
+          } else {
+            // Initialize with empty state
+            renderState({
+              projectName: 'Wish Upon',
+              categories: []
+            });
+          }
+        }, (error) => {
+          console.error('Firebase read error:', error);
+          updateSyncStatus('Firebase Error ⚠️');
+        });
+
+      } catch (error) {
+        console.error('Firebase init error:', error);
+        updateSyncStatus('Firebase Error ⚠️');
+      }
     }
 
     // Add throttling for stats updates
