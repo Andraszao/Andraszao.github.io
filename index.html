@@ -2521,83 +2521,58 @@ task"></textarea>
     // Firebase initialization
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
     import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
+    import { getAnalytics, setAnalyticsCollectionEnabled } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
 
     // Make Firebase functions globally available
     window.firebaseRef = ref;
     window.firebaseSet = set;
 
-    async function init() {
-      try {
-        // Check if Firebase config exists
-        if (!window.FIREBASE_CONFIG) {
-          console.error('Firebase config is missing');
-          updateSyncStatus('Local Mode (No Firebase Config) 💾');
-          
-          // Load from localStorage as fallback
-          const savedState = localStorage.getItem('taskState');
-          if (savedState) {
-            renderState(JSON.parse(savedState));
-          }
-          return;
-        }
+    const config = JSON.parse(window.FIREBASE_CONFIG || '{}');
+    const app = initializeApp(config);
+    window.db = getDatabase();
 
-        const config = JSON.parse(window.FIREBASE_CONFIG);
-        const app = initializeApp(config);
-        
-        // Initialize database with persistence enabled
-        window.db = getDatabase();
-        
-        const analytics = getAnalytics(app);
+    // Configure analytics with proper cookie settings
+    const analytics = getAnalytics(app);
+    setAnalyticsCollectionEnabled(analytics, {
+      cookie_flags: 'SameSite=None;Secure',
+      cookie_domain: window.location.hostname,
+      cookie_expires: 63072000
+    });
 
+    updateSyncStatus('Connected to Cloud ☁️');
+
+    // Set up real-time sync with reconnection logic
+    const taskId = 'default-task-list';
+    const tasksRef = ref(window.db, `tasks/${taskId}`);
+    
+    const connectedRef = ref(window.db, '.info/connected');
+    onValue(connectedRef, (snap) => {
+      if (snap.val() === true) {
         updateSyncStatus('Connected to Cloud ☁️');
-
-        // Set up real-time sync with reconnection logic
-        const taskId = 'default-task-list';
-        const tasksRef = ref(window.db, `tasks/${taskId}`);
-        
-        const connectedRef = ref(window.db, '.info/connected');
-        onValue(connectedRef, (snap) => {
-          if (snap.val() === true) {
-            updateSyncStatus('Connected to Cloud ☁️');
-          } else {
-            updateSyncStatus('Offline Mode 📱');
-          }
-        }, (error) => {
-          console.error('Connection error:', error);
-          updateSyncStatus('Connection Error ⚠️');
-        });
-
-        onValue(tasksRef, (snapshot) => {
-          const data = snapshot.val();
-          if (data && (!window.lastLocalUpdate || Date.now() - window.lastLocalUpdate > 1000)) {
-            renderState(data);
-          }
-        }, (error) => {
-          console.error('Data sync error:', error);
-          updateSyncStatus('Sync Error ⚠️');
-          
-          // Load from localStorage as fallback
-          const savedState = localStorage.getItem('taskState');
-          if (savedState) {
-            renderState(JSON.parse(savedState));
-          }
-        });
-
-      } catch (error) {
-        console.error('Firebase initialization error:', error);
-        updateSyncStatus('Error Connecting ⚠️');
-        
-        // Load from localStorage as fallback
-        const savedState = localStorage.getItem('taskState');
-        if (savedState) {
-          renderState(JSON.parse(savedState));
-        }
+      } else {
+        updateSyncStatus('Offline Mode 📱');
       }
-    }
+    }, (error) => {
+      console.error('Connection error:', error);
+      updateSyncStatus('Connection Error ⚠️');
+    });
 
-    // Initialize when DOM is ready
-    window.addEventListener('DOMContentLoaded', init);
+    onValue(tasksRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data && (!window.lastLocalUpdate || Date.now() - window.lastLocalUpdate > 1000)) {
+        renderState(data);
+      }
+    }, (error) => {
+      console.error('Data sync error:', error);
+      updateSyncStatus('Sync Error ⚠️');
+      
+      // Load from localStorage as fallback
+      const savedState = localStorage.getItem('taskState');
+      if (savedState) {
+        renderState(JSON.parse(savedState));
+      }
+    });
+
   </script>
 
   <script>
@@ -2706,83 +2681,58 @@ task"></textarea>
     // Firebase initialization
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
     import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
+    import { getAnalytics, setAnalyticsCollectionEnabled } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
 
     // Make Firebase functions globally available
     window.firebaseRef = ref;
     window.firebaseSet = set;
 
-    async function init() {
-      try {
-        // Check if Firebase config exists
-        if (!window.FIREBASE_CONFIG) {
-          console.error('Firebase config is missing');
-          updateSyncStatus('Local Mode (No Firebase Config) 💾');
-          
-          // Load from localStorage as fallback
-          const savedState = localStorage.getItem('taskState');
-          if (savedState) {
-            renderState(JSON.parse(savedState));
-          }
-          return;
-        }
+    const config = JSON.parse(window.FIREBASE_CONFIG || '{}');
+    const app = initializeApp(config);
+    window.db = getDatabase();
 
-        const config = JSON.parse(window.FIREBASE_CONFIG);
-        const app = initializeApp(config);
-        
-        // Initialize database with persistence enabled
-        window.db = getDatabase();
-        
-        const analytics = getAnalytics(app);
+    // Configure analytics with proper cookie settings
+    const analytics = getAnalytics(app);
+    setAnalyticsCollectionEnabled(analytics, {
+      cookie_flags: 'SameSite=None;Secure',
+      cookie_domain: window.location.hostname,
+      cookie_expires: 63072000
+    });
 
+    updateSyncStatus('Connected to Cloud ☁️');
+
+    // Set up real-time sync with reconnection logic
+    const taskId = 'default-task-list';
+    const tasksRef = ref(window.db, `tasks/${taskId}`);
+    
+    const connectedRef = ref(window.db, '.info/connected');
+    onValue(connectedRef, (snap) => {
+      if (snap.val() === true) {
         updateSyncStatus('Connected to Cloud ☁️');
-
-        // Set up real-time sync with reconnection logic
-        const taskId = 'default-task-list';
-        const tasksRef = ref(window.db, `tasks/${taskId}`);
-        
-        const connectedRef = ref(window.db, '.info/connected');
-        onValue(connectedRef, (snap) => {
-          if (snap.val() === true) {
-            updateSyncStatus('Connected to Cloud ☁️');
-          } else {
-            updateSyncStatus('Offline Mode 📱');
-          }
-        }, (error) => {
-          console.error('Connection error:', error);
-          updateSyncStatus('Connection Error ⚠️');
-        });
-
-        onValue(tasksRef, (snapshot) => {
-          const data = snapshot.val();
-          if (data && (!window.lastLocalUpdate || Date.now() - window.lastLocalUpdate > 1000)) {
-            renderState(data);
-          }
-        }, (error) => {
-          console.error('Data sync error:', error);
-          updateSyncStatus('Sync Error ⚠️');
-          
-          // Load from localStorage as fallback
-          const savedState = localStorage.getItem('taskState');
-          if (savedState) {
-            renderState(JSON.parse(savedState));
-          }
-        });
-
-      } catch (error) {
-        console.error('Firebase initialization error:', error);
-        updateSyncStatus('Error Connecting ⚠️');
-        
-        // Load from localStorage as fallback
-        const savedState = localStorage.getItem('taskState');
-        if (savedState) {
-          renderState(JSON.parse(savedState));
-        }
+      } else {
+        updateSyncStatus('Offline Mode 📱');
       }
-    }
+    }, (error) => {
+      console.error('Connection error:', error);
+      updateSyncStatus('Connection Error ⚠️');
+    });
 
-    // Initialize when DOM is ready
-    window.addEventListener('DOMContentLoaded', init);
+    onValue(tasksRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data && (!window.lastLocalUpdate || Date.now() - window.lastLocalUpdate > 1000)) {
+        renderState(data);
+      }
+    }, (error) => {
+      console.error('Data sync error:', error);
+      updateSyncStatus('Sync Error ⚠️');
+      
+      // Load from localStorage as fallback
+      const savedState = localStorage.getItem('taskState');
+      if (savedState) {
+        renderState(JSON.parse(savedState));
+      }
+    });
+
   </script>
 </body>
 </html>
