@@ -12,54 +12,33 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      
-      # Create dist directory
-      - name: Setup dist directory
-        run: |
-          mkdir -p dist
-          cp -r js dist/
-          cp index.html dist/
+      - uses: actions/checkout@v2
       
       # Inject Firebase config into index.html
       - name: Inject Firebase Config
-        run: |
-          if [ -z "${{ secrets.FIREBASE_API_KEY }}" ]; then
-            echo "Warning: Firebase API key not set"
-            exit 1
-          fi
-          
-          # Create the config object with proper escaping
-          CONFIG="{\\\"apiKey\\\":\\\"${{ secrets.FIREBASE_API_KEY }}\\\",\\\"authDomain\\\":\\\"${{ secrets.FIREBASE_AUTH_DOMAIN }}\\\",\\\"projectId\\\":\\\"${{ secrets.FIREBASE_PROJECT_ID }}\\\",\\\"storageBucket\\\":\\\"${{ secrets.FIREBASE_STORAGE_BUCKET }}\\\",\\\"messagingSenderId\\\":\\\"${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}\\\",\\\"appId\\\":\\\"${{ secrets.FIREBASE_APP_ID }}\\\"}"
-          
-          # Replace the placeholder with properly escaped config
-          sed -i "s|window.FIREBASE_CONFIG = null;|window.FIREBASE_CONFIG = $CONFIG;|" dist/index.html || {
-            echo "Error: Failed to inject Firebase config"
-            exit 1
-          }
-      
-      # Cache dependencies
-      - name: Cache dependencies
-        uses: actions/cache@v3
+        uses: actions/github-script@v6
         with:
-          path: |
-            dist
-            js
-          key: ${{ runner.os }}-build-${{ hashFiles('**/*') }}
-          restore-keys: |
-            ${{ runner.os }}-build-
+          script: |
+            const fs = require('fs');
+            const html = fs.readFileSync('index.html', 'utf8');
+            const firebaseConfig = {
+              apiKey: '${{ secrets.FIREBASE_API_KEY }}',
+              authDomain: '${{ secrets.FIREBASE_AUTH_DOMAIN }}',
+              projectId: '${{ secrets.FIREBASE_PROJECT_ID }}',
+              storageBucket: '${{ secrets.FIREBASE_STORAGE_BUCKET }}',
+              messagingSenderId: '${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}',
+              appId: '${{ secrets.FIREBASE_APP_ID }}',
+              measurementId: '${{ secrets.FIREBASE_MEASUREMENT_ID }}'
+            };
+            const injectedHtml = html.replace(
+              '</head>',
+              `<script>window.FIREBASE_CONFIG = '${JSON.stringify(firebaseConfig)}';</script></head>`
+            );
+            fs.writeFileSync('index.html', injectedHtml);
       
       # Deploy to GitHub Pages
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
-      
-      # Validate build
-      - name: Validate build
-        run: |
-          if [ ! -f dist/index.html ] || [ ! -d dist/js ]; then
-            echo "Error: Build files are missing"
-            exit 1
-          fi
+          publish_dir: .
