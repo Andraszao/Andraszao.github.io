@@ -20,10 +20,29 @@ class FirebaseManager {
 
         try {
             if (!window.FIREBASE_CONFIG) {
+                console.error('Firebase config is missing in window.FIREBASE_CONFIG');
                 throw new Error('Firebase config missing');
             }
 
-            const app = initializeApp(JSON.parse(window.FIREBASE_CONFIG));
+            let config;
+            try {
+                config = typeof window.FIREBASE_CONFIG === 'string' 
+                    ? JSON.parse(window.FIREBASE_CONFIG)
+                    : window.FIREBASE_CONFIG;
+            } catch (e) {
+                console.error('Failed to parse Firebase config:', e);
+                throw new Error('Invalid Firebase config');
+            }
+
+            const requiredFields = ['apiKey', 'authDomain', 'projectId'];
+            for (const field of requiredFields) {
+                if (!config[field]) {
+                    console.error(`Missing required Firebase config field: ${field}`);
+                    throw new Error('Invalid Firebase config');
+                }
+            }
+
+            const app = initializeApp(config);
             this.#db = getDatabase();
 
             await this.setupSync();

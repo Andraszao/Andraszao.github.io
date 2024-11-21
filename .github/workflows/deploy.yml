@@ -14,34 +14,28 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       
-      # Create dist directory and copy files
+      # Create dist directory
       - name: Setup dist directory
         run: |
           mkdir -p dist
-          cp index.html dist/
           cp -r js dist/
-          cp -r data dist/
+          cp index.html dist/
       
-      # Inject Firebase config into dist/index.html
+      # Inject Firebase config into index.html
       - name: Inject Firebase Config
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const fs = require('fs');
-            const html = fs.readFileSync('dist/index.html', 'utf8');
-            const firebaseConfig = {
-              apiKey: '${{ secrets.FIREBASE_API_KEY }}',
-              authDomain: '${{ secrets.FIREBASE_AUTH_DOMAIN }}',
-              projectId: '${{ secrets.FIREBASE_PROJECT_ID }}',
-              storageBucket: '${{ secrets.FIREBASE_STORAGE_BUCKET }}',
-              messagingSenderId: '${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}',
-              appId: '${{ secrets.FIREBASE_APP_ID }}'
-            };
-            const injectedHtml = html.replace(
-              '</head>',
-              `<script>window.FIREBASE_CONFIG = '${JSON.stringify(firebaseConfig)}';</script></head>`
-            );
-            fs.writeFileSync('dist/index.html', injectedHtml);
+        run: |
+          CONFIG=$(cat << EOF
+          {
+            "apiKey": "${{ secrets.FIREBASE_API_KEY }}",
+            "authDomain": "${{ secrets.FIREBASE_AUTH_DOMAIN }}",
+            "projectId": "${{ secrets.FIREBASE_PROJECT_ID }}",
+            "storageBucket": "${{ secrets.FIREBASE_STORAGE_BUCKET }}",
+            "messagingSenderId": "${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}",
+            "appId": "${{ secrets.FIREBASE_APP_ID }}"
+          }
+          EOF
+          )
+          sed -i "s|</head>|<script>window.FIREBASE_CONFIG = '$CONFIG';</script></head>|" dist/index.html
       
       # Deploy to GitHub Pages
       - name: Deploy
