@@ -6,6 +6,9 @@ class FirebaseManager {
     #db;
     #statusCallback;
     #stateCallback;
+    #initializationRetries = 0;
+    #maxRetries = 3;
+    #retryDelay = 1000;
 
     constructor() {
         if (FirebaseManager.instance) {
@@ -19,37 +22,71 @@ class FirebaseManager {
         this.#stateCallback = stateCallback;
 
         try {
-            console.log('Checking Firebase config...');
-            if (!window.FIREBASE_CONFIG) {
-                console.error('window.FIREBASE_CONFIG is undefined');
-                throw new Error('Firebase config missing');
+            const config = await this.#waitForConfig();
+            if (!config) {
+                throw new Error('Firebase config missing after retries');
             }
 
-            console.log('Config type:', typeof window.FIREBASE_CONFIG);
-            console.log('Config value:', window.FIREBASE_CONFIG);
-
-            let config;
-            try {
-                config = typeof window.FIREBASE_CONFIG === 'string' 
-                    ? JSON.parse(window.FIREBASE_CONFIG)
-                    : window.FIREBASE_CONFIG;
-                console.log('Firebase config parsed successfully:', config);
-            } catch (e) {
-                console.error('Failed to parse Firebase config:', e);
-                throw new Error('Invalid Firebase config');
+            // Validate required config fields
+            const requiredFields = ['apiKey', 'authDomain', 'projectId'];
+            for (const field of requiredFields) {
+                if (!config[field]) {
+                    throw new Error(`Missing required Firebase config field: ${field}`);
+                }
             }
 
             const app = initializeApp(config);
             this.#db = getDatabase();
-            console.log('Firebase initialized successfully');
-
+            
+            await this.#testConnection();
             await this.setupSync();
+            
+            console.log('Firebase initialized successfully');
             return true;
         } catch (error) {
             console.error('Firebase initialization error:', error);
             this.#statusCallback('Error Connecting ⚠️');
             return false;
         }
+    }
+
+    async #waitForConfig() {
+        while (this.#initializationRetries < this.#maxRetries) {
+            if (window.FIREBASE_CONFIG) {
+                try {
+                    return typeof window.FIREBASE_CONFIG === 'string' 
+                        ? JSON.parse(window.FIREBASE_CONFIG)
+                        : window.FIREBASE_CONFIG;
+                } catch (e) {
+                    console.error('Failed to parse Firebase config:', e);
+                }
+            }
+
+            console.log(`Waiting for Firebase config... Attempt ${this.#initializationRetries + 1}/${this.#maxRetries}`);
+            await new Promise(resolve => setTimeout(resolve, this.#retryDelay));
+            this.#initializationRetries++;
+        }
+        return null;
+    }
+
+    async #testConnection() {
+        const testRef = ref(this.#db, '.info/connected');
+        return new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                unsubscribe();
+                reject(new Error('Connection timeout'));
+            }, 5000);
+
+            const unsubscribe = onValue(testRef, (snap) => {
+                clearTimeout(timeout);
+                unsubscribe();
+                resolve(snap.val());
+            }, (error) => {
+                clearTimeout(timeout);
+                unsubscribe();
+                reject(error);
+            });
+        });
     }
 
     async setupSync() {
