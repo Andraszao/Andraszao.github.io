@@ -12,7 +12,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       
       # Create dist directory
       - name: Setup dist directory
@@ -24,32 +24,30 @@ jobs:
       # Inject Firebase config into index.html
       - name: Inject Firebase Config
         run: |
-          # Create the config object
-          CONFIG="{\"apiKey\":\"${{ secrets.FIREBASE_API_KEY }}\",\"authDomain\":\"${{ secrets.FIREBASE_AUTH_DOMAIN }}\",\"projectId\":\"${{ secrets.FIREBASE_PROJECT_ID }}\",\"storageBucket\":\"${{ secrets.FIREBASE_STORAGE_BUCKET }}\",\"messagingSenderId\":\"${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}\",\"appId\":\"${{ secrets.FIREBASE_APP_ID }}\"}"
+          if [ -z "${{ secrets.FIREBASE_API_KEY }}" ]; then
+            echo "Warning: Firebase API key not set"
+            exit 1
+          fi
           
-          # Replace the placeholder
-          sed -i "s|window.FIREBASE_CONFIG = null;|window.FIREBASE_CONFIG = '$CONFIG';|" dist/index.html
-          CONFIG=$(jq -n \
-            --arg key "${{ secrets.FIREBASE_API_KEY }}" \
-            --arg domain "${{ secrets.FIREBASE_AUTH_DOMAIN }}" \
-            --arg project "${{ secrets.FIREBASE_PROJECT_ID }}" \
-            --arg bucket "${{ secrets.FIREBASE_STORAGE_BUCKET }}" \
-            --arg sender "${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}" \
-            --arg app "${{ secrets.FIREBASE_APP_ID }}" \
-            '{
-              apiKey: $key,
-              authDomain: $domain,
-              projectId: $project,
-              storageBucket: $bucket,
-              messagingSenderId: $sender,
-              appId: $app
-            }')
+          # Create the config object with proper escaping
+          CONFIG="{\\\"apiKey\\\":\\\"${{ secrets.FIREBASE_API_KEY }}\\\",\\\"authDomain\\\":\\\"${{ secrets.FIREBASE_AUTH_DOMAIN }}\\\",\\\"projectId\\\":\\\"${{ secrets.FIREBASE_PROJECT_ID }}\\\",\\\"storageBucket\\\":\\\"${{ secrets.FIREBASE_STORAGE_BUCKET }}\\\",\\\"messagingSenderId\\\":\\\"${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}\\\",\\\"appId\\\":\\\"${{ secrets.FIREBASE_APP_ID }}\\\"}"
           
-          # Escape the JSON for JavaScript
-          ESCAPED_CONFIG=$(echo "$CONFIG" | jq -R -s -c .)
-          
-          # Insert the config into index.html
-          sed -i "s|</head>|<script>window.FIREBASE_CONFIG = ${ESCAPED_CONFIG};</script></head>|" dist/index.html
+          # Replace the placeholder with properly escaped config
+          sed -i "s|window.FIREBASE_CONFIG = null;|window.FIREBASE_CONFIG = $CONFIG;|" dist/index.html || {
+            echo "Error: Failed to inject Firebase config"
+            exit 1
+          }
+      
+      # Cache dependencies
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            dist
+            js
+          key: ${{ runner.os }}-build-${{ hashFiles('**/*') }}
+          restore-keys: |
+            ${{ runner.os }}-build-
       
       # Deploy to GitHub Pages
       - name: Deploy
@@ -57,3 +55,11 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
+      
+      # Validate build
+      - name: Validate build
+        run: |
+          if [ ! -f dist/index.html ] || [ ! -d dist/js ]; then
+            echo "Error: Build files are missing"
+            exit 1
+          fi

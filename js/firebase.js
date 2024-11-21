@@ -25,29 +25,23 @@ class FirebaseManager {
                 throw new Error('Firebase config missing');
             }
 
-            this.#db = getDatabase();
+            console.log('Config type:', typeof window.FIREBASE_CONFIG);
+            console.log('Config value:', window.FIREBASE_CONFIG);
+
             let config;
             try {
                 config = typeof window.FIREBASE_CONFIG === 'string' 
                     ? JSON.parse(window.FIREBASE_CONFIG)
                     : window.FIREBASE_CONFIG;
-                console.log('Firebase config parsed successfully');
+                console.log('Firebase config parsed successfully:', config);
             } catch (e) {
                 console.error('Failed to parse Firebase config:', e);
-                console.log('Config value:', window.FIREBASE_CONFIG);
                 throw new Error('Invalid Firebase config');
-            }
-
-            const requiredFields = ['apiKey', 'authDomain', 'projectId'];
-            for (const field of requiredFields) {
-                if (!config[field]) {
-                    console.error(`Missing required Firebase config field: ${field}`);
-                    throw new Error('Invalid Firebase config');
-                }
             }
 
             const app = initializeApp(config);
             this.#db = getDatabase();
+            console.log('Firebase initialized successfully');
 
             await this.setupSync();
             return true;
