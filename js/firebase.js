@@ -19,8 +19,9 @@ class FirebaseManager {
         this.#stateCallback = stateCallback;
 
         try {
+            console.log('Checking Firebase config...');
             if (!window.FIREBASE_CONFIG) {
-                console.error('Firebase config is missing in window.FIREBASE_CONFIG');
+                console.error('window.FIREBASE_CONFIG is undefined');
                 throw new Error('Firebase config missing');
             }
 
@@ -29,8 +30,10 @@ class FirebaseManager {
                 config = typeof window.FIREBASE_CONFIG === 'string' 
                     ? JSON.parse(window.FIREBASE_CONFIG)
                     : window.FIREBASE_CONFIG;
+                console.log('Firebase config parsed successfully');
             } catch (e) {
                 console.error('Failed to parse Firebase config:', e);
+                console.log('Config value:', window.FIREBASE_CONFIG);
                 throw new Error('Invalid Firebase config');
             }
 
