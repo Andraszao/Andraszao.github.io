@@ -25,6 +25,7 @@ class FirebaseManager {
                 throw new Error('Firebase config missing');
             }
 
+            this.#db = getDatabase();
             let config;
             try {
                 config = typeof window.FIREBASE_CONFIG === 'string' 
